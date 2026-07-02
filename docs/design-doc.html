@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aloft — Design Doc</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Karla:wght@400;500;600;700&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --haze:#e9ece3;        /* pale dusty sage — high thin air */
+    --haze-low:#e3e6da;    /* a touch warmer toward the ground */
+    --paper:#f3f5ee;       /* card field */
+    --paper-edge:#dfe3d6;  /* card border */
+    --ink:#293228;         /* deep pine-charcoal */
+    --ink-soft:#586054;    /* muted sage-grey */
+    --ink-faint:#828a7c;   /* captions */
+    --pine:#2f5d4e;        /* primary accent / headings */
+    --pine-deep:#234a3e;
+    --moss:#6f8f63;        /* mid green */
+    --amber:#c47b34;       /* the sun — used sparingly */
+    --amber-soft:#d9a35e;
+    --stone:#c4bdac;       /* hairlines */
+    --shadow:rgba(35,45,35,.07);
+    --measure:68ch;
+  }
+
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:linear-gradient(180deg,var(--haze) 0%,var(--haze) 40%,var(--haze-low) 100%);
+    color:var(--ink);
+    font-family:"Karla",system-ui,sans-serif;
+    font-size:17px;
+    line-height:1.62;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .wrap{max-width:860px;margin:0 auto;padding:0 28px 120px;}
+
+  /* ---------- hero ---------- */
+  .hero{padding:64px 0 38px;position:relative;}
+  .eyebrow{
+    font-family:"Spline Sans Mono",monospace;
+    font-size:12px;letter-spacing:.22em;text-transform:uppercase;
+    color:var(--moss);margin:0 0 14px;
+  }
+  .hero h1{
+    font-family:"Fraunces",serif;
+    font-optical-sizing:auto;
+    font-weight:500;
+    font-size:clamp(48px,9vw,86px);
+    line-height:.96;
+    letter-spacing:-.01em;
+    margin:0;
+    color:var(--pine-deep);
+  }
+  .hero h1 em{font-style:italic;color:var(--amber);font-weight:400;}
+  .thesis{
+    font-family:"Fraunces",serif;
+    font-weight:400;
+    font-size:clamp(19px,2.6vw,23px);
+    line-height:1.45;
+    color:var(--ink-soft);
+    max-width:46ch;
+    margin:22px 0 0;
+  }
+
+  /* glide-path signature */
+  .glide{display:block;width:100%;height:auto;margin:30px 0 6px;overflow:visible;}
+  .glide .path{fill:none;stroke:var(--pine);stroke-width:2;stroke-linecap:round;}
+  .glide .thermal{stroke:var(--amber-soft);stroke-width:1.4;stroke-dasharray:2 7;opacity:.8;}
+  .glide .horizon{stroke:var(--stone);stroke-width:1;stroke-dasharray:1 6;}
+  .glide .sun{fill:var(--amber);}
+  .glide .wing{fill:var(--pine-deep);}
+  .glide .label{font-family:"Spline Sans Mono",monospace;font-size:10px;fill:var(--ink-faint);letter-spacing:.08em;}
+  .wing-anim{animation:drift 14s ease-in-out infinite;transform-box:fill-box;transform-origin:center;}
+  @keyframes drift{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+
+  .meta{
+    display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;
+    font-family:"Spline Sans Mono",monospace;font-size:12px;color:var(--ink-faint);
+    border-top:1px solid var(--stone);margin-top:30px;padding-top:16px;
+  }
+  .meta b{color:var(--pine);font-weight:500;}
+
+  /* ---------- sections ---------- */
+  section{padding:40px 0 4px;}
+  .sec-label{
+    font-family:"Spline Sans Mono",monospace;
+    font-size:12px;letter-spacing:.2em;text-transform:uppercase;
+    color:var(--moss);margin:0 0 6px;
+  }
+  h2{
+    font-family:"Fraunces",serif;font-weight:500;
+    font-size:clamp(27px,4.5vw,36px);line-height:1.08;
+    letter-spacing:-.01em;color:var(--pine-deep);
+    margin:0 0 18px;
+  }
+  h3{
+    font-family:"Karla",sans-serif;font-weight:700;
+    font-size:17px;letter-spacing:.01em;color:var(--ink);
+    margin:26px 0 6px;
+  }
+  p{margin:0 0 16px;max-width:var(--measure);}
+  .lead{font-size:18.5px;color:var(--ink);}
+  strong{color:var(--pine-deep);font-weight:700;}
+  em{color:var(--ink-soft);}
+  a{color:var(--pine);text-decoration:underline;text-decoration-color:var(--moss);text-underline-offset:2px;}
+
+  ul{margin:0 0 16px;padding:0;max-width:var(--measure);list-style:none;}
+  li{position:relative;padding:0 0 0 26px;margin:0 0 10px;}
+  li::before{
+    content:"";position:absolute;left:4px;top:11px;
+    width:7px;height:7px;border-radius:50%;
+    background:var(--moss);
+  }
+  li.alt::before{background:var(--amber-soft);}
+
+  .divider{height:1px;background:var(--stone);border:0;margin:38px 0 0;opacity:.7;}
+
+  /* keystone callout */
+  .keystone{
+    background:var(--pine-deep);color:#e8efe6;
+    border-radius:14px;padding:30px 32px;margin:8px 0 22px;
+    max-width:var(--measure);
+  }
+  .keystone .eq{
+    font-family:"Fraunces",serif;font-style:italic;font-weight:400;
+    font-size:clamp(22px,4vw,30px);line-height:1.3;margin:0;color:#fff;
+  }
+  .keystone .eq span{color:var(--amber-soft);font-style:normal;}
+  .keystone small{display:block;margin-top:12px;font-family:"Spline Sans Mono",monospace;font-size:12px;color:#a9bda6;letter-spacing:.04em;}
+
+  /* open-question cards */
+  .q{
+    background:var(--paper);border:1px solid var(--paper-edge);
+    border-left:3px solid var(--amber);border-radius:0 12px 12px 0;
+    padding:20px 24px;margin:0 0 16px;max-width:var(--measure);
+    box-shadow:0 2px 14px var(--shadow);
+  }
+  .q .qhead{display:flex;align-items:baseline;gap:10px;margin-bottom:6px;}
+  .q .qnum{font-family:"Spline Sans Mono",monospace;font-size:12px;color:var(--amber);}
+  .q h3{margin:0;color:var(--pine-deep);}
+  .q p{margin:8px 0 0;font-size:16px;color:var(--ink-soft);}
+  .lean{
+    display:inline-block;margin-top:10px;font-family:"Spline Sans Mono",monospace;
+    font-size:12px;color:var(--pine);background:#e4ebdf;border-radius:6px;
+    padding:4px 10px;letter-spacing:.03em;
+  }
+  .lean b{color:var(--pine-deep);}
+  .q.decided{border-left-color:var(--moss);}
+  .q.decided .qnum{color:var(--moss);}
+  .lean.set{background:#dde9d6;color:var(--pine-deep);}
+
+  /* phase gates — a real sequence */
+  .gate{
+    display:grid;grid-template-columns:auto 1fr;gap:20px;
+    padding:18px 0;border-top:1px solid var(--stone);max-width:var(--measure);
+  }
+  .gate:last-of-type{border-bottom:1px solid var(--stone);}
+  .gate .ph{
+    font-family:"Fraunces",serif;font-weight:600;font-size:30px;
+    color:var(--moss);line-height:1;padding-top:2px;
+  }
+  .gate h3{margin:0 0 4px;}
+  .gate p{margin:0;font-size:15.5px;color:var(--ink-soft);}
+  .gate .ask{display:block;margin-top:7px;font-family:"Spline Sans Mono",monospace;font-size:12.5px;color:var(--pine);}
+  .gate .ask::before{content:"gate ▸ ";color:var(--amber);}
+
+  /* parking lot */
+  .lot{background:var(--paper);border:1px dashed var(--paper-edge);border-radius:12px;padding:22px 26px;max-width:var(--measure);}
+  .lot p{margin:0 0 10px;font-size:15.5px;color:var(--ink-soft);}
+  .lot p:last-child{margin:0;}
+  .tag{font-family:"Spline Sans Mono",monospace;font-size:12px;color:var(--amber);}
+
+  footer{margin-top:60px;padding-top:20px;border-top:1px solid var(--stone);font-family:"Spline Sans Mono",monospace;font-size:12px;color:var(--ink-faint);}
+
+  @media (max-width:560px){
+    body{font-size:16px;}
+    .wrap{padding:0 20px 90px;}
+    .gate{grid-template-columns:1fr;gap:4px;}
+    .gate .ph{font-size:22px;}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .wing-anim{animation:none;}
+    html{scroll-behavior:auto;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <p class="eyebrow">Browser flight game · living design doc</p>
+    <h1>Aloft<em>.</em></h1>
+    <p class="thesis">A serene, melodic flight game about reading the air and staying up — closer to gliding over Hyrule at dawn than to Mario's cape.</p>
+
+    <svg class="glide" viewBox="0 0 800 200" role="img" aria-label="A glide path: a dive to build speed, a climb through a thermal, and a long soaring descent toward the horizon.">
+      <!-- horizon -->
+      <line class="horizon" x1="0" y1="168" x2="800" y2="168"/>
+      <text class="label" x="0" y="186">ground / haze</text>
+      <!-- thermal column -->
+      <line class="thermal" x1="430" y1="40" x2="430" y2="168"/>
+      <text class="label" x="412" y="34">thermal</text>
+      <!-- sun -->
+      <circle class="sun" cx="724" cy="42" r="13"/>
+      <!-- glide path: launch high, dive for speed, climb through thermal, long soar down -->
+      <path class="path" d="M40,58 C120,70 150,118 220,128 C300,140 330,96 430,70 C470,60 500,118 560,132 C640,150 700,150 770,158"/>
+      <!-- wing glyph riding the path -->
+      <g class="wing-anim">
+        <path class="wing" d="M212,124 l16,-7 l-3,9 l16,-3 l-18,8 l-3,-6 z"/>
+      </g>
+      <text class="label" x="120" y="150">dive · gain speed</text>
+      <text class="label" x="470" y="56">cash speed for height</text>
+    </svg>
+
+    <div class="meta">
+      <span>v<b>0.2</b></span>
+      <span>updated <b>Jun 13 2026</b></span>
+      <span>phase <b>pre-0 / brainstorm</b></span>
+      <span>title <b>provisional</b></span>
+    </div>
+  </header>
+
+  <!-- THE FEEL -->
+  <section>
+    <p class="sec-label">The feel</p>
+    <h2>What it should feel like before it does anything</h2>
+    <p class="lead">Serene, melodic, calming — with just enough challenge to stay engaged. The reference point is the first floating moment in <em>Breath of the Wild</em>, not the adrenaline of the cape. Earthy nature tones, flat-shaded low-poly with depth and heart, deliberately not photorealistic.</p>
+    <ul>
+      <li><strong>No fail state.</strong> Landing is never a punishment. Touching water gently resets you to the nearest shore. The stakes are the ones you set yourself.</li>
+      <li><strong>A slight challenge, never a wall.</strong> The skill is in reading the air and stringing lift together. Mastery is optional and always rewarded, never required.</li>
+      <li><strong>The world teaches the wind.</strong> No flight HUD if we can help it — the scenery itself tells you where the lift is.</li>
+      <li><strong>Pleasing first, deep second.</strong> If a flying cube over an empty plane already feels good, everything after is content.</li>
+    </ul>
+  </section>
+  <hr class="divider">
+
+  <!-- KEYSTONE -->
+  <section>
+    <p class="sec-label">The keystone mechanic</p>
+    <h2>Both references are secretly the same equation</h2>
+    <p>BotW's paraglider is descent management; Mario's cape is momentum rhythm. They feel opposite but they run on one idea — you trade altitude for speed and back again, while drag slowly bleeds the total and lift tops it back up. Build the whole game on this and both feelings fall out for free.</p>
+    <div class="keystone">
+      <p class="eq">total energy <span>=</span> altitude <span>+</span> airspeed<br>— bleeding to drag, restored by lift</p>
+      <small>pitch down → faster + lower · pitch up → slower + higher (until stall)</small>
+    </div>
+    <p>One arcade-simplified flight model delivers the gentle survey-glide <em>and</em> a real skill ceiling for anyone who wants to pump for height. Phase 0 exists to answer one question about this and nothing else: <strong>does gliding feel good?</strong></p>
+  </section>
+  <hr class="divider">
+
+  <!-- LIFT -->
+  <section>
+    <p class="sec-label">Reading the air</p>
+    <h2>Lift you can see without a UI</h2>
+    <ul>
+      <li><strong>Thermals.</strong> Rising columns over sun-baked ground. Telegraphed by shimmer, drifting dust or pollen, and birds circling overhead. Catch one and you climb without effort.</li>
+      <li><strong>Ridge lift.</strong> Wind hitting a windward slope pushes up along the face. Real slope data (procedural or, later, real terrain) feeds this directly.</li>
+      <li><strong>Ambient tells.</strong> Grass bend, drifting leaves, ripples on water, the lean of trees — the wind is legible everywhere, so the player learns it by feel rather than by reading a meter.</li>
+    </ul>
+    <p>This is the system that turns "flying around" into "flying <em>well</em>." It's the first thing to build after the bare flight model proves out.</p>
+  </section>
+  <hr class="divider">
+
+  <!-- LOOP -->
+  <section>
+    <p class="sec-label">The core loop</p>
+    <h2>Glide-and-explore, with rhythm-flight living inside it</h2>
+    <p>Climb to height, launch, read the wind, reach a vista or an island, repeat in a slightly bigger world — the <a href="https://ashorthike.com" target="_blank" rel="noopener">A Short Hike</a> shape. The pure momentum-flow of the cape isn't a separate mode; it's simply what skilled play of the same energy model looks like. You never have to pump for altitude, but it's always there if you want it.</p>
+    <p>Goals stay loose and optional: a far rock you're not sure you can reach, collectibles that extend your glide or climb, beacons to light across an archipelago. The point is the flight, not the checklist.</p>
+  </section>
+  <hr class="divider">
+
+  <!-- OPEN QUESTIONS -->
+  <section>
+    <p class="sec-label">Decisions</p>
+    <h2>The calls that shape the architecture</h2>
+    <p>The two real forks — music and session shape — are now settled (Jun 13). Q3 and Q4 are smaller calls made by default, still easy to overturn. Kept here as the record.</p>
+
+    <div class="q decided">
+      <div class="qhead"><span class="qnum">Q1</span><h3>Music — adaptive, with a simple bed first</h3></div>
+      <p>Adaptive music that responds to flight state — layers swelling as you climb, thinning on a dive, a motif when you catch a thermal — is the truest expression of "serene + melodic." The audio layer is designed to allow it from the start, but P0–P1 ship a simple ambient bed so it never blocks flight tuning.</p>
+      <span class="lean set">decided → <b>design for adaptive, ship a simple bed early</b></span>
+    </div>
+
+    <div class="q decided">
+      <div class="qhead"><span class="qnum">Q2</span><h3>Session shape — infinite sandbox, arc on top later</h3></div>
+      <p>A serene sandbox you can glide forever with self-set goals is the foundation, built so a small authored arc (reach the summit, chase one sunset to a resting place) can sit on top later without rework. Build the toy first; the arc is content.</p>
+      <span class="lean set">decided → <b>infinite sandbox foundation, arc layered later</b></span>
+    </div>
+
+    <div class="q">
+      <div class="qhead"><span class="qnum">Q3</span><h3>World scale — bounded or streaming?</h3></div>
+      <p>An infinite procedural world needs chunked terrain streaming and LOD; a single bounded valley fits in one mesh and is far simpler.</p>
+      <span class="lean">call made → <b>start bounded</b>, keep the terrain interface from precluding streaming later</span>
+    </div>
+
+    <div class="q">
+      <div class="qhead"><span class="qnum">Q4</span><h3>Input — what do you fly with?</h3></div>
+      <p>Keyboard/mouse, gamepad, or touch. Touch matters eventually (PULSE went there), but it changes feel-tuning.</p>
+      <span class="lean">call made → <b>prototype keyboard/mouse, design input-agnostic</b>; gamepad &amp; touch as later adapters</span>
+    </div>
+  </section>
+  <hr class="divider">
+
+  <!-- CHARACTER -->
+  <section>
+    <p class="sec-label">The character</p>
+    <h2>Whatever you fly is a readability instrument first, mascot second</h2>
+    <p>From the chase cam it has to telegraph pitch and energy state at a glance. That quietly settles the question more than cuteness does. Deferred until flight feels good — but the bet is narrowing.</p>
+    <ul>
+      <li><strong>Soaring bird</strong> (hawk, albatross). Rides thermals diegetically; a true soarer justifies pure no-flap gliding, which is exactly the energy model. Banking looks gorgeous. Hardest to animate without jank.</li>
+      <li><strong>Caped being.</strong> The cape <em>is</em> the readout — billows on a dive, snaps on a pull-up. Most direct line to the Mario reference, lowest effort to feel good (cloth on a few bones, not convincing creature flight).</li>
+      <li class="alt"><strong>Flying squirrel — cut.</strong> It's a glider, not a soarer; can't regain altitude. Fights the core loop.</li>
+    </ul>
+    <p><strong>For prototyping: fly a literal low-poly wedge.</strong> It reads pitch and bank with zero art. Decide bird-vs-cape after flight feels good. Current bet: soaring bird or caped being.</p>
+  </section>
+  <hr class="divider">
+
+  <!-- SCENERY -->
+  <section>
+    <p class="sec-label">Scenery &amp; terrain</p>
+    <h2>Don't pick the scenery source — abstract it</h2>
+    <p>The flight model and lift system don't care where the heightfield comes from. Build the sim against an abstract <strong>terrain provider</strong>, and "procedural" and "real-world elevation" become two implementations of one interface, swappable later.</p>
+    <h3>Start procedural</h3>
+    <p>Not because it's better long-term, but because it's the only source where <em>you</em> control lift placement — which is the entire question the early phases exist to answer. Real terrain is often flat and dull to fly, and it marries less cleanly to low-poly. Procedural first; real-world is a content mode you bolt on once flight already feels great.</p>
+    <h3>The real-world idea, done right (later)</h3>
+    <p>The dream version of "Google Maps scenery" is <em>not</em> the photoreal flythrough. It's: name a place → pull real elevation (USGS/SRTM or Mapbox/Terrarium tiles, mostly free) → render it in your own low-poly style → drop thermals on the sun-facing slopes for today's date. You fly the real shape of Yosemite, but it looks like your game. "Date" decouples cleanly into <strong>lighting</strong> — real sun angle for a lat/long and date, atmospheric and basically free.</p>
+    <p>Photoreal 3D tiles are explicitly out (see deferred): paid, heavy, and they fight the art direction.</p>
+  </section>
+  <hr class="divider">
+
+  <!-- ART -->
+  <section>
+    <p class="sec-label">Art direction</p>
+    <h2>Earthy, flat-shaded, atmospheric</h2>
+    <ul>
+      <li><strong>Flat-shaded low-poly</strong> with depth and heart — think Tiny Glade / Sail Forth, not photogrammetry. Cheap to render in the browser, and the look ages well.</li>
+      <li><strong>Earthy nature palette.</strong> Mossy greens, warm sand and bark, stone greys, sky and dusk tones. Saturation kept calm.</li>
+      <li><strong>Time-of-day as a free reward.</strong> A gentle day cycle gives you a sunset to chase without any extra systems.</li>
+      <li><strong>Atmosphere over detail.</strong> Distance haze, soft fog, and light doing the emotional work — height should feel like height.</li>
+    </ul>
+  </section>
+  <hr class="divider">
+
+  <!-- TECH -->
+  <section>
+    <p class="sec-label">Tech &amp; architecture</p>
+    <h2>Same stack as EPOCH, same separation discipline</h2>
+    <p><strong>Vite + TypeScript + Three.js</strong>, flat-shaded low-poly, deployed through the existing nk00 pipeline — no new infrastructure to figure out.</p>
+    <h3>Renderer-agnostic core</h3>
+    <p>Mirror the EPOCH architecture so the parts that matter stay testable and swappable:</p>
+    <ul>
+      <li><strong>Sim core</strong> — flight model, energy, lift sampling. Pure logic, no Three.js. This is where "feel" lives and where you'll spend tuning time.</li>
+      <li><strong>Terrain provider</strong> — an interface the sim queries for height + slope at a point. Procedural and real-DEM both implement it.</li>
+      <li><strong>Lift provider</strong> — thermals and ridge lift, derived from terrain + sun + wind.</li>
+      <li><strong>Three.js renderer</strong> — draws the world and the chase cam from sim state.</li>
+      <li><strong>Audio layer</strong> — designed to allow adaptive scoring even while it ships a simple bed.</li>
+      <li><strong>UI shell</strong> — HTML/CSS, minimal by design.</li>
+    </ul>
+  </section>
+  <hr class="divider">
+
+  <!-- PHASE GATES -->
+  <section>
+    <p class="sec-label">Phase gates</p>
+    <h2>Each gate answers exactly one question</h2>
+    <p>Run it like PULSE: nothing past a gate starts until the gate's question is answered yes. The early ones are deliberately tiny.</p>
+
+    <div class="gate">
+      <div class="ph">0</div>
+      <div>
+        <h3>The wedge flies</h3>
+        <p>A low-poly wedge over a flat plane. Energy model + chase cam. No terrain, no lift, no art.</p>
+        <span class="ask">does gliding feel good?</span>
+      </div>
+    </div>
+    <div class="gate">
+      <div class="ph">1</div>
+      <div>
+        <h3>One hill, one thermal</h3>
+        <p>Add a single shaped hill and one thermal + ridge lift. Prove you can gain and hold altitude by reading the air.</p>
+        <span class="ask">is finding and using lift satisfying?</span>
+      </div>
+    </div>
+    <div class="gate">
+      <div class="ph">2</div>
+      <div>
+        <h3>The air becomes legible</h3>
+        <p>Readable tells (dust, grass, birds), procedural terrain shaping, distance haze. A small bounded world worth exploring.</p>
+        <span class="ask">can a player feel the wind without a HUD?</span>
+      </div>
+    </div>
+    <div class="gate">
+      <div class="ph">3</div>
+      <div>
+        <h3>It has a face and a voice</h3>
+        <p>Commit to bird or cape. Layer in the adaptive-capable audio (simple bed first) and the day cycle.</p>
+        <span class="ask">does it have heart, not just physics?</span>
+      </div>
+    </div>
+    <div class="gate">
+      <div class="ph">4</div>
+      <div>
+        <h3>A reason to keep flying</h3>
+        <p>Loose optional goals on the sandbox foundation, persistence (settings + discoveries). The authored arc waits.</p>
+        <span class="ask">do you want to come back to it?</span>
+      </div>
+    </div>
+  </section>
+  <hr class="divider">
+
+  <!-- DEFERRED -->
+  <section>
+    <p class="sec-label">Deferred / out of scope for v1</p>
+    <h2>Things we're consciously not doing yet</h2>
+    <ul>
+      <li><strong>Photoreal 3D tiles.</strong> Paid, heavy, melts up close, fights the art direction. Out.</li>
+      <li><strong>Real-world elevation mode.</strong> The good version of the Maps idea — but a content mode for after flight feels great, not a day-one data pipeline.</li>
+      <li><strong>Mobile / touch &amp; gamepad.</strong> Designed for via input-agnostic core; built later.</li>
+      <li><strong>Multiplayer.</strong> Not now, maybe never. The vibe is solitary and calm by design.</li>
+      <li class="alt"><strong>The world-design trap.</strong> The pull to design the whole world before flight feels good. Resist it. One hill, one thermal, one landing.</li>
+    </ul>
+  </section>
+  <hr class="divider">
+
+  <!-- PARKING LOT -->
+  <section>
+    <p class="sec-label">Parking lot</p>
+    <h2>Ideas noted, not yet placed</h2>
+    <div class="lot">
+      <p><span class="tag">title</span> &nbsp;Working name is <strong>Aloft</strong> (provisional). Alternates floating: Updraft, Windward, Vesper, Driftwing, Quiet Sky.</p>
+      <p><span class="tag">collab</span> &nbsp;Jess as a possible collaborator on palette / visual theming, energy permitting — same flag as EPOCH.</p>
+      <p><span class="tag">idea</span> &nbsp;Collectibles that extend glide or climb (Short Hike's feathers) as the lightest possible progression.</p>
+      <p><span class="tag">idea</span> &nbsp;Beacons to light across an archipelago as the gentle-arc candidate for Q2.</p>
+    </div>
+  </section>
+
+  <footer>
+    Aloft · living design doc · v0.1 · we update this in place as the plan grows.
+  </footer>
+
+</div>
+</body>
+</html>

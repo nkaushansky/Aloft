@@ -1,0 +1,22 @@
+{
+  "name": "aloft",
+  "private": true,
+  "version": "0.0.1",
+  "description": "Aloft — Phase 0: a low-poly wedge that flies. Does gliding feel good?",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "lil-gui": "^0.19.2",
+    "three": "^0.165.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.165.0",
+    "playwright-core": "^1.61.1",
+    "typescript": "^5.4.5",
+    "vite": "^5.2.0"
+  }
+}

@@ -74,11 +74,12 @@ export const config = {
   pitchAutoLevel: 0.35,
 
   /**
-   * How fast the wings ease back to level hands-off (per second). Stronger
-   * than pitch — rolling out of a turn on its own is pure forgiveness and
-   * doesn't fight the glide the way pitch recentering does.
+   * How fast the wings ease back to level hands-off (per second). Kept lazy
+   * on purpose: a set bank should *linger* so circling in a thermal is
+   * "lean and rest", not constant re-tapping. It still drifts level
+   * eventually — forgiveness, in no hurry.
    */
-  rollAutoLevel: 0.7,
+  rollAutoLevel: 0.3,
 
   /** Hard attitude limits (radians) — keeps the arcade model well-behaved. */
   maxPitch: 1.0, // ~57° — enough for a dramatic dive or zoom-climb
@@ -135,6 +136,36 @@ export const config = {
 
   /** Field of view (degrees). Wider = faster-feeling, smaller-feeling craft. */
   camFov: 60,
+
+  // ------------------------------------------- phase 1: the world & the air
+  /** The one hill: a smooth gaussian rise. Height/radius set its character —
+   *  tall & tight reads as a peak, low & wide as a long soarable ridge. */
+  hillHeight: 220,
+  hillRadius: 500,
+  hillX: 0,
+  hillZ: -1100,
+
+  /** Steady wind speed (m/s). Drives ridge lift; more wind = stronger lift
+   *  on windward slopes. */
+  windSpeed: 9,
+
+  /** Direction the wind travels toward, degrees. 0 = the way you launch, so
+   *  by default the wind is at your back and strikes the hill's near face. */
+  windDirDeg: 0,
+
+  /** The one thermal: where it sits, how wide the column is, how hard its
+   *  core rises, and the altitude where it gently dissolves. */
+  thermalX: 350,
+  thermalZ: -500,
+  thermalRadius: 100,
+  thermalStrength: 5,
+  thermalTop: 450,
+
+  /** Multiplier on ridge lift (1 = the wind's upslope component, straight). */
+  ridgeGain: 1.0,
+
+  /** Height above the ground (m) where ridge lift fades to nothing. */
+  ridgeCeiling: 300,
 };
 
 export type Config = typeof config;

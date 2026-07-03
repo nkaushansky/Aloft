@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { AircraftState } from '../sim/state';
+import type { TerrainProvider } from '../sim/terrain';
 import { forwardOf } from '../sim/state';
 import { config } from '../sim/config';
 
@@ -13,7 +14,12 @@ export class ChaseCamera {
   private readonly look = new THREE.Vector3();
   private initialized = false;
 
-  update(camera: THREE.PerspectiveCamera, state: AircraftState, dt: number): void {
+  update(
+    camera: THREE.PerspectiveCamera,
+    state: AircraftState,
+    dt: number,
+    terrain: TerrainProvider,
+  ): void {
     const fwd = forwardOf(state);
     const p = state.position;
 
@@ -22,8 +28,8 @@ export class ChaseCamera {
       p.y - fwd.y * config.camDistance + config.camHeight,
       p.z - fwd.z * config.camDistance,
     );
-    // Don't let the camera dip into the ground plane.
-    targetPos.y = Math.max(targetPos.y, 1.5);
+    // Don't let the camera dip into the terrain.
+    targetPos.y = Math.max(targetPos.y, terrain.heightAt(targetPos.x, targetPos.z) + 2);
 
     const targetLook = new THREE.Vector3(
       p.x + fwd.x * config.camLookAhead,
@@ -41,6 +47,7 @@ export class ChaseCamera {
     const k = 1 - Math.pow(1 - config.camLerp, dt * 60);
     this.pos.lerp(targetPos, k);
     this.look.lerp(targetLook, k);
+    this.pos.y = Math.max(this.pos.y, terrain.heightAt(this.pos.x, this.pos.z) + 2);
 
     camera.position.copy(this.pos);
     camera.lookAt(this.look);

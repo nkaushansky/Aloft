@@ -2,7 +2,8 @@ import GUI from 'lil-gui';
 import { config } from './sim/config';
 import { AircraftState, createLaunchState } from './sim/state';
 import { step } from './sim/flightModel';
-import { FlatTerrain } from './sim/terrain';
+import { HillTerrain } from './sim/terrain';
+import { ThermalLift, RidgeLift, CompositeLift } from './sim/lift';
 import { Renderer } from './render/renderer';
 import { ChaseCamera } from './render/chaseCamera';
 import { KeyboardInput } from './input/keyboard';
@@ -11,11 +12,12 @@ import { DebugHud } from './ui/debugHud';
 // Wiring only: input -> sim.step(dt) -> render. All feel lives in sim/.
 
 const container = document.getElementById('app')!;
-const renderer = new Renderer(container);
+const terrain = new HillTerrain(config);
+const lift = new CompositeLift([new ThermalLift(config), new RidgeLift(config, terrain)]);
+const renderer = new Renderer(container, terrain);
 const chaseCam = new ChaseCamera();
 const input = new KeyboardInput();
 const hud = new DebugHud(container);
-const terrain = new FlatTerrain();
 
 let current: AircraftState = createLaunchState(config);
 let previous: AircraftState = current;
@@ -59,7 +61,23 @@ cam.add(config, 'camHeight', 0, 15, 0.25);
 cam.add(config, 'camLerp', 0.01, 1, 0.01);
 cam.add(config, 'camLookAhead', 0, 60, 1);
 cam.add(config, 'camFov', 40, 100, 1);
+const world = gui.addFolder('world (phase 1)');
+world.add(config, 'hillHeight', 50, 500, 5).onFinishChange(() => renderer.rebuildTerrain());
+world.add(config, 'hillRadius', 150, 1200, 10).onFinishChange(() => renderer.rebuildTerrain());
+world.add(config, 'hillX', -2000, 2000, 25).onFinishChange(() => renderer.rebuildTerrain());
+world.add(config, 'hillZ', -2500, 0, 25).onFinishChange(() => renderer.rebuildTerrain());
+const air = gui.addFolder('air (phase 1)');
+air.add(config, 'windSpeed', 0, 25, 0.5);
+air.add(config, 'windDirDeg', 0, 360, 5);
+air.add(config, 'thermalStrength', 0, 12, 0.25);
+air.add(config, 'thermalRadius', 30, 300, 5);
+air.add(config, 'thermalTop', 100, 900, 10);
+air.add(config, 'thermalX', -2000, 2000, 25);
+air.add(config, 'thermalZ', -2500, 0, 25);
+air.add(config, 'ridgeGain', 0, 3, 0.05);
+air.add(config, 'ridgeCeiling', 50, 600, 10);
 launch.close();
+world.close();
 
 // --- fixed-timestep loop ----------------------------------------------------
 // The sim runs at a locked 60Hz; the renderer draws every animation frame,
@@ -91,6 +109,8 @@ function lerpState(a: AircraftState, b: AircraftState, t: number): AircraftState
     stickRoll: lerp(a.stickRoll, b.stickRoll),
     settle: lerp(a.settle, b.settle),
     flying: lerp(a.flying, b.flying),
+    lift: lerp(a.lift, b.lift),
+    climbRate: lerp(a.climbRate, b.climbRate),
   };
 }
 
@@ -104,15 +124,18 @@ function frame(now: number): void {
   const controls = input.read();
   while (accumulator >= SIM_DT) {
     previous = current;
-    current = step(current, controls, SIM_DT, config, terrain);
+    current = step(current, controls, SIM_DT, config, terrain, lift);
     accumulator -= SIM_DT;
   }
 
   const alpha = accumulator / SIM_DT;
   const drawn = lerpState(previous, current, alpha);
-  chaseCam.update(renderer.camera, drawn, frameDt);
+  chaseCam.update(renderer.camera, drawn, frameDt, terrain);
   hud.update(drawn);
-  renderer.render(drawn);
+  renderer.render(drawn, frameDt);
 }
 
 requestAnimationFrame(frame);
+
+// Test hook: lets automated flights read live sim state (harmless in play).
+(window as unknown as Record<string, unknown>).__aloftState = () => current;

@@ -31,12 +31,18 @@ export class DebugHud {
     const bankDeg = (state.roll * 180) / Math.PI;
     const stall =
       state.flying >= 0.999 ? 'ok' : state.flying > 0.3 ? 'SLOW — nearing stall' : 'STALL';
+    const vario =
+      state.climbRate >= 0.2 ? '▲' : state.climbRate <= -0.2 ? '▼' : '—';
+    const signed = (v: number) => (v >= 0 ? '+' : '') + v.toFixed(1);
     this.el.textContent =
       `airspeed  ${state.airspeed.toFixed(1).padStart(6)} m/s\n` +
       `altitude  ${state.position.y.toFixed(1).padStart(6)} m\n` +
+      `climb     ${signed(state.climbRate).padStart(6)} m/s ${vario}\n` +
+      `lift      ${signed(state.lift).padStart(6)} m/s\n` +
       `energy    ${totalEnergy(state, config).toFixed(0).padStart(6)} J/kg\n` +
       `bank      ${bankDeg.toFixed(0).padStart(6)}°\n` +
       `stall     ${stall}\n` +
+      `wind      ${config.windSpeed.toFixed(0).padStart(6)} m/s → ${config.windDirDeg}°\n` +
       `\n` +
       `W/S pitch · A/D roll · R reset · H hud`;
   }

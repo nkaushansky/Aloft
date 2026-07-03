@@ -1,6 +1,8 @@
 import type { Config } from './config';
 import type { TerrainProvider } from './terrain';
+import type { LiftProvider } from './lift';
 import { AircraftState, createLaunchState, forwardOf } from './state';
+import { clamp, smoothstep } from './math';
 
 /** Normalized control input, device-agnostic. Both axes in [-1, 1]. */
 export interface FlightInput {
@@ -8,14 +10,6 @@ export interface FlightInput {
   pitch: number;
   /** +1 = full roll right, -1 = full roll left. */
   roll: number;
-}
-
-const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
-
-/** 0 → 1 with smooth ends, like GLSL smoothstep. */
-function smoothstep(edge0: number, edge1: number, x: number): number {
-  const t = clamp((x - edge0) / (edge1 - edge0), 0, 1);
-  return t * t * (3 - 2 * t);
 }
 
 /**
@@ -31,6 +25,7 @@ export function step(
   dt: number,
   cfg: Config,
   terrain: TerrainProvider,
+  liftSource: LiftProvider,
 ): AircraftState {
   const s: AircraftState = { ...state, position: { ...state.position } };
 
@@ -89,10 +84,17 @@ export function step(
   const targetSettle = deficit * cfg.settleResponse;
   s.settle += (targetSettle - s.settle) * Math.min(1, dt / Math.max(cfg.settleResponse, 1e-3));
 
+  // --- rising air ---------------------------------------------------------
+  // The air itself moves: a thermal or ridge updraft carries the whole craft
+  // upward. This is the game's only source of new energy — found in the
+  // world, never made by the stick.
+  s.lift = liftSource.liftAt(s.position.x, s.position.y, s.position.z);
+
   // --- integrate position -------------------------------------------------
   const fwd = forwardOf(s);
+  s.climbRate = fwd.y * s.airspeed - s.settle + s.lift;
   s.position.x += fwd.x * s.airspeed * dt;
-  s.position.y += fwd.y * s.airspeed * dt - s.settle * dt;
+  s.position.y += s.climbRate * dt;
   s.position.z += fwd.z * s.airspeed * dt;
 
   // --- ground contact: simple reset (Phase 0 only) -------------------------

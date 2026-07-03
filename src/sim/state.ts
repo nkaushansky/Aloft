@@ -30,6 +30,10 @@ export interface AircraftState {
   settle: number;
   /** 1 = fully flying, 0 = fully stalled. Drives control softening + HUD. */
   flying: number;
+  /** Vertical air velocity at our position last step (m/s) — the vario's soul. */
+  lift: number;
+  /** Net vertical speed last step (m/s): path + lift - settle. For the HUD. */
+  climbRate: number;
 }
 
 /** Fresh launch: wings level, at altitude, at speed, pointed down -Z. */
@@ -44,6 +48,8 @@ export function createLaunchState(cfg: Config): AircraftState {
     stickRoll: 0,
     settle: 0,
     flying: 1,
+    lift: 0,
+    climbRate: 0,
   };
 }
 

@@ -42,8 +42,14 @@ export function step(
   const authority = 0.3 + 0.7 * s.flying; // never zero — a stall mushes, it doesn't lock you out
 
   // --- attitude from input ---------------------------------------------
-  s.pitch += input.pitch * cfg.pitchRate * authority * dt;
-  s.roll += input.roll * cfg.rollRate * authority * dt;
+  // The virtual stick eases toward the commanded input, so a keyboard tap
+  // arrives as a swelling deflection, not a step. Maneuvers become leans.
+  const stickEase = Math.min(1, dt / Math.max(cfg.inputResponse, 1e-3));
+  s.stickPitch += (input.pitch - s.stickPitch) * stickEase;
+  s.stickRoll += (input.roll - s.stickRoll) * stickEase;
+
+  s.pitch += s.stickPitch * cfg.pitchRate * authority * dt;
+  s.roll += s.stickRoll * cfg.rollRate * authority * dt;
 
   // Hands-off forgiveness: the nose drifts to its glide trim (slightly nose
   // down, so releasing the stick *is* gliding), the wings drift to level.

@@ -35,6 +35,7 @@ forces.add(config, 'liftPerSpeed', 0.005, 0.08, 0.0005);
 forces.add(config, 'dragCoeff', 0.0005, 0.01, 0.0001);
 forces.add(config, 'settleResponse', 0.05, 1.5, 0.01);
 const control = gui.addFolder('control');
+control.add(config, 'inputResponse', 0.05, 1.5, 0.01);
 control.add(config, 'pitchRate', 0.2, 4, 0.05);
 control.add(config, 'rollRate', 0.2, 5, 0.05);
 control.add(config, 'bankTurnFactor', 0, 3, 0.05);
@@ -86,6 +87,8 @@ function lerpState(a: AircraftState, b: AircraftState, t: number): AircraftState
     pitch: angle(a.pitch, b.pitch),
     roll: angle(a.roll, b.roll),
     airspeed: lerp(a.airspeed, b.airspeed),
+    stickPitch: lerp(a.stickPitch, b.stickPitch),
+    stickRoll: lerp(a.stickRoll, b.stickRoll),
     settle: lerp(a.settle, b.settle),
     flying: lerp(a.flying, b.flying),
   };

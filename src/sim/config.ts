@@ -37,8 +37,16 @@ export const config = {
   settleResponse: 0.35,
 
   // ---------------------------------------------------- control authority
+  /**
+   * Seconds for the virtual stick to ease toward the pressed key. Keyboard
+   * input is a hard on/off step; this turns a tap into a gentle deflection
+   * that swells and releases. The single biggest "calm vs twitchy" knob —
+   * raise it and every maneuver becomes a lean instead of a jerk.
+   */
+  inputResponse: 0.4,
+
   /** How fast the nose answers the stick (rad/s at full deflection). */
-  pitchRate: 1.5,
+  pitchRate: 1.2,
 
   /** How fast the wings answer the stick (rad/s at full deflection). */
   rollRate: 2.2,

@@ -23,6 +23,9 @@ export interface AircraftState {
   roll: number;
   /** Speed through the air along the nose (m/s). */
   airspeed: number;
+  /** Smoothed virtual-stick deflections in [-1, 1] — keys ease in, not snap. */
+  stickPitch: number;
+  stickRoll: number;
   /** Smoothed extra sink from flying below cruise (m/s, downward). */
   settle: number;
   /** 1 = fully flying, 0 = fully stalled. Drives control softening + HUD. */
@@ -37,6 +40,8 @@ export function createLaunchState(cfg: Config): AircraftState {
     pitch: 0,
     roll: 0,
     airspeed: cfg.launchAirspeed,
+    stickPitch: 0,
+    stickRoll: 0,
     settle: 0,
     flying: 1,
   };

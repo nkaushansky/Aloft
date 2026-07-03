@@ -22,11 +22,12 @@ export const config = {
 
   /**
    * Parasitic drag — bleeds airspeed as dragCoeff * airspeed². This is the
-   * slow leak in the energy tank. At 0.0022 a level glide loses ~0.9 m/s per
-   * second at cruise, so a sustained glide wants ~5° of nose-down. Bigger
-   * values make the air feel like syrup; smaller makes dives keep forever.
+   * slow leak in the energy tank. At 0.0018, drag at trim exactly balances
+   * gravity's pull along the glide path at cruise speed, so a hands-off
+   * glide holds its speed. Bigger values make the air feel like syrup;
+   * smaller makes dives keep forever.
    */
-  dragCoeff: 0.0022,
+  dragCoeff: 0.0018,
 
   /**
    * How quickly a lift deficit turns into sink (seconds). When flying slower
@@ -50,11 +51,26 @@ export const config = {
   bankTurnFactor: 1.0,
 
   /**
-   * Gentle return-to-level when the stick is released (per second).
-   * Forgiveness: hands off and the craft settles into a calm glide instead
-   * of holding whatever attitude you left it in. 0 = fully manual.
+   * The attitude the nose settles to hands-off (radians). Slightly nose-down
+   * — a real glider trims to its glide, not to level. This is what makes
+   * releasing the stick feel like *gliding* instead of leveling-then-mushing.
+   * ~ -4°.
    */
-  autoLevel: 0.9,
+  trimPitch: -0.07,
+
+  /**
+   * How fast the nose eases back to trimPitch hands-off (per second).
+   * Deliberately lazy: the craft should drift home, not snap back. Raise for
+   * more forgiveness, lower toward 0 for fully manual pitch.
+   */
+  pitchAutoLevel: 0.35,
+
+  /**
+   * How fast the wings ease back to level hands-off (per second). Stronger
+   * than pitch — rolling out of a turn on its own is pure forgiveness and
+   * doesn't fight the glide the way pitch recentering does.
+   */
+  rollAutoLevel: 0.7,
 
   /** Hard attitude limits (radians) — keeps the arcade model well-behaved. */
   maxPitch: 1.0, // ~57° — enough for a dramatic dive or zoom-climb

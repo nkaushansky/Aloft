@@ -45,10 +45,14 @@ export function step(
   s.pitch += input.pitch * cfg.pitchRate * authority * dt;
   s.roll += input.roll * cfg.rollRate * authority * dt;
 
-  // Hands-off forgiveness: ease back toward level.
-  const level = Math.min(1, cfg.autoLevel * dt);
-  if (Math.abs(input.pitch) < 0.05) s.pitch -= s.pitch * level;
-  if (Math.abs(input.roll) < 0.05) s.roll -= s.roll * level;
+  // Hands-off forgiveness: the nose drifts to its glide trim (slightly nose
+  // down, so releasing the stick *is* gliding), the wings drift to level.
+  if (Math.abs(input.pitch) < 0.05) {
+    s.pitch += (cfg.trimPitch - s.pitch) * Math.min(1, cfg.pitchAutoLevel * dt);
+  }
+  if (Math.abs(input.roll) < 0.05) {
+    s.roll -= s.roll * Math.min(1, cfg.rollAutoLevel * dt);
+  }
 
   // Stall recovery: the nose is pushed toward a shallow dive until speed
   // returns. Scaled by (1 - flying) so it only acts inside the stall.

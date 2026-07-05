@@ -1,6 +1,7 @@
 import type { Config } from './config';
 import type { TerrainProvider } from './terrain';
 import { smoothstep } from './math';
+import { makeRng } from './noise';
 
 /**
  * The air abstraction, sibling to TerrainProvider: the sim asks "how fast is
@@ -13,22 +14,64 @@ export interface LiftProvider {
   liftAt(x: number, y: number, z: number): number;
 }
 
+/** One thermal's personality: where it lives and how it lifts. */
+export interface Thermal {
+  x: number;
+  z: number;
+  radius: number;
+  strength: number;
+  top: number;
+}
+
 /**
- * A single thermal: a rising column over sun-baked ground. Strongest at the
- * core, fading with radius (gaussian) and dissolving gently near its top so
- * the climb eases off instead of hitting a lid.
+ * A seeded field of thermals scattered over the land, each with its own
+ * personality — some are broad and gentle, some tight and strong. Every
+ * column is strongest at its core, fading with radius (gaussian) and
+ * dissolving gently near its top so the climb eases off instead of hitting
+ * a lid. Deterministic per seed: the renderer asks for the same list to
+ * place the tells (dust, birds).
  */
-export class ThermalLift implements LiftProvider {
+export class ThermalField implements LiftProvider {
+  private thermals: Thermal[] = [];
+  private builtKey = '';
+
   constructor(private readonly cfg: Config) {}
 
+  /** The current thermal list (rebuilt automatically when config changes). */
+  list(): Thermal[] {
+    const c = this.cfg;
+    const key = `${c.thermalCount}|${c.thermalSeed}|${c.thermalStrength}|${c.thermalRadius}|${c.thermalTop}`;
+    if (key !== this.builtKey) {
+      this.builtKey = key;
+      const rng = makeRng(c.thermalSeed * 7919 + 17);
+      this.thermals = [];
+      for (let i = 0; i < c.thermalCount; i++) {
+        const angle = rng() * Math.PI * 2;
+        const dist = 400 + rng() * 1500; // never right on top of the launch
+        // personality: ±40% size, ±35% strength, ±30% height around the averages
+        this.thermals.push({
+          x: Math.cos(angle) * dist,
+          z: Math.sin(angle) * dist,
+          radius: c.thermalRadius * (0.6 + rng() * 0.8),
+          strength: c.thermalStrength * (0.65 + rng() * 0.7),
+          top: c.thermalTop * (0.7 + rng() * 0.6),
+        });
+      }
+    }
+    return this.thermals;
+  }
+
   liftAt(x: number, y: number, z: number): number {
-    const dx = x - this.cfg.thermalX;
-    const dz = z - this.cfg.thermalZ;
-    const r2 = (dx * dx + dz * dz) / (this.cfg.thermalRadius * this.cfg.thermalRadius);
-    if (r2 > 9) return 0; // far outside the column
-    const radial = Math.exp(-r2);
-    const topFade = 1 - smoothstep(this.cfg.thermalTop * 0.75, this.cfg.thermalTop, y);
-    return this.cfg.thermalStrength * radial * topFade;
+    let total = 0;
+    for (const t of this.list()) {
+      const dx = x - t.x;
+      const dz = z - t.z;
+      const r2 = (dx * dx + dz * dz) / (t.radius * t.radius);
+      if (r2 > 9) continue;
+      const topFade = 1 - smoothstep(t.top * 0.75, t.top, y);
+      total += t.strength * Math.exp(-r2) * topFade;
+    }
+    return total;
   }
 }
 

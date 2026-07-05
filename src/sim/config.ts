@@ -153,13 +153,13 @@ export const config = {
    *  by default the wind is at your back and strikes the hill's near face. */
   windDirDeg: 0,
 
-  /** The one thermal: where it sits, how wide the column is, how hard its
-   *  core rises, and the altitude where it gently dissolves. Strength 7 vs a
-   *  ~1.4 m/s glide sink means the core lifts you at ~5.5 m/s — a boost you
-   *  feel in your stomach, arriving smoothly because the column's edge is a
-   *  gaussian, never a wall. */
-  thermalX: 350,
-  thermalZ: -500,
+  /** The thermal field: how many columns dot the land and the average
+   *  personality they vary around (±~35% each, per seed). Strength 7 vs a
+   *  ~1.4 m/s glide sink means an average core lifts you at ~5.5 m/s — a
+   *  boost you feel in your stomach, arriving smoothly because the column's
+   *  edge is a gaussian, never a wall. */
+  thermalCount: 6,
+  thermalSeed: 3,
   thermalRadius: 100,
   thermalStrength: 7,
   thermalTop: 450,
@@ -169,6 +169,17 @@ export const config = {
 
   /** Height above the ground (m) where ridge lift fades to nothing. */
   ridgeCeiling: 300,
+
+  // --------------------------------------- phase 2: a world worth exploring
+  /** Seed for the rolling terrain — a new number is a new countryside. */
+  terrainSeed: 7,
+
+  /** How tall the rolling hills get (m). Character of the countryside:
+   *  low = plains with soft swells, high = proper hill country. */
+  terrainAmplitude: 90,
+
+  /** Wavelength of the rolling (m) — how far apart the swells sit. */
+  terrainScale: 700,
 };
 
 export type Config = typeof config;

@@ -154,11 +154,14 @@ export const config = {
   windDirDeg: 0,
 
   /** The one thermal: where it sits, how wide the column is, how hard its
-   *  core rises, and the altitude where it gently dissolves. */
+   *  core rises, and the altitude where it gently dissolves. Strength 7 vs a
+   *  ~1.4 m/s glide sink means the core lifts you at ~5.5 m/s — a boost you
+   *  feel in your stomach, arriving smoothly because the column's edge is a
+   *  gaussian, never a wall. */
   thermalX: 350,
   thermalZ: -500,
   thermalRadius: 100,
-  thermalStrength: 5,
+  thermalStrength: 7,
   thermalTop: 450,
 
   /** Multiplier on ridge lift (1 = the wind's upslope component, straight). */

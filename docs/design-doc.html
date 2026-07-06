@@ -284,7 +284,8 @@
     <div class="q decided">
       <div class="qhead"><span class="qnum">Q1</span><h3>Music — adaptive, with a simple bed first</h3></div>
       <p>Adaptive music that responds to flight state — layers swelling as you climb, thinning on a dive, a motif when you catch a thermal — is the truest expression of "serene + melodic." The audio layer is designed to allow it from the start, but P0–P1 ship a simple ambient bed so it never blocks flight tuning.</p>
-      <span class="lean set">decided → <b>design for adaptive, ship a simple bed early</b></span>
+      <p><em>Iteration (Jul 5 playtest):</em> the v1 bed's noise-based wind read as "static getting louder" on laptop speakers. Direction sharpened: <strong>calming tones first</strong> — a slow generative pentatonic bell melody whose note spacing tightens as airspeed rises (tempo is the speed readout, never a beat), over a barely-there drone; wind demoted to a soft dark rumble. Test all audio on small speakers, not just headphones.</p>
+      <span class="lean set">decided → <b>design for adaptive, ship a simple bed early</b> · tones over texture</span>
     </div>
 
     <div class="q decided">
@@ -329,7 +330,7 @@
       <li><strong>Caped being — passed on.</strong> The cape-as-readout idea was strong (billows on a dive, snaps on a pull-up); it lost to the bird's diegetic fit with lift, flocks, and perches.</li>
       <li class="alt"><strong>Flying squirrel — cut earlier.</strong> A glider, not a soarer; can't regain altitude. Fights the core loop.</li>
     </ul>
-    <p>Animation discipline for the tone: a soarer barely moves — subtle wing flex in lift, a slight head-into-the-wind lean, no flapping. Stillness is the luxury.</p>
+    <p>Animation discipline for the tone: a soarer barely moves — no flapping, stillness is the luxury. First flex shipped Jul 5: the wingtips arch gently upward while banking and when lift is carrying the bird. Later candidates: a slight head-into-the-wind lean, tail-fan spread on a hard carve.</p>
   </section>
   <hr class="divider">
 
@@ -453,6 +454,7 @@
       <p><span class="tag">plan · P4</span> &nbsp;<strong>Boost meter</strong> (from Phase 1 playtest): hold Space for a smooth temporary surge; the bar depletes and must recharge before reuse. To honor Q5 (the stick never creates energy), the bar <em>charges while riding lift</em> — energy you found, banked, and released, like a bird's earned stamina. Pairs naturally with Short-Hike-style collectibles that extend the bar. Slotted for Phase 4; plain timer-recharge is the fallback if playtests want more generosity.</p>
       <p><span class="tag">plan · P3</span> &nbsp;<strong>Wandering birds &amp; small flocks</strong> (noted Jul 5): birds that travel the map — not in straight lines, but following air currents and terrain the same way the player does. Joinable: fall in with a flock for a few hills or a few minutes, then part ways. Companionship without multiplayer (which stays out — the vibe is solitary, not lonely), and a living wind-tell: a flock tracing a ridge line teaches the ridge. Slotted for Phase 3, where the world gets its heart.</p>
       <p><span class="tag">plan · P4</span> &nbsp;<strong>Flight journal</strong> (noted Jul 5): stat tracking kept gentle — distance flown, top speed, highest climb, longest glide, thermals caught. A journal, not a leaderboard: shown quietly at the end of a flight (see Q6) and kept across sessions with the Phase 4 persistence work.</p>
+      <p><span class="tag">plan · post-P4</span> &nbsp;<strong>Bird types at the start screen</strong> (noted Jul 5): choose your soarer — a small bird that carves quick but cruises slow, a balanced mid-size, a big hawk/eagle that's fast and steady but less nimble. Architecture makes this nearly free: every flight-feel constant already lives in one config object, so each bird is a <em>preset</em> (turn rate, cruise speed, drag, stall point) plus a mesh variant. A fuller customizer (colors, markings) can layer on later. Tone rule: a choice of feel, never a grind to unlock.</p>
       <p><span class="tag">plan · P-mobile</span> &nbsp;<strong>Touch controls via the stick guide</strong> (noted Jul 5): the on-screen virtual-stick circle (dot eases to the edge the harder/longer you push — <em>shipped as a readout in the Phase 2 build</em>) becomes the touch input surface on mobile: drag inside the circle to fly. One control metaphor across desktop and touch, already wired to the sim's input easing.</p>
     </div>
   </section>

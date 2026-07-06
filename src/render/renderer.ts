@@ -21,6 +21,9 @@ export class Renderer {
   readonly camera: THREE.PerspectiveCamera;
   private readonly gl: THREE.WebGLRenderer;
   private readonly craft: THREE.Group;
+  private readonly leftWing: THREE.Mesh;
+  private readonly rightWing: THREE.Mesh;
+  private wingFlex = 0;
   private sun!: THREE.DirectionalLight;
   private hemi!: THREE.HemisphereLight;
   private skyCanvas!: HTMLCanvasElement;
@@ -103,7 +106,10 @@ export class Renderer {
     }
     this.scene.add(this.streaks);
 
-    this.craft = makePlayerBird();
+    const bird = makePlayerBird();
+    this.craft = bird.group;
+    this.leftWing = bird.leftWing;
+    this.rightWing = bird.rightWing;
     this.scene.add(this.craft);
 
     window.addEventListener('resize', () => this.onResize());
@@ -207,6 +213,15 @@ export class Renderer {
     // YXZ: yaw about Y, then pitch about X, then roll about the nose.
     // Nose points -Z, so positive rotation.x is nose-up and roll flips sign.
     this.craft.rotation.set(state.pitch, state.yaw, -state.roll, 'YXZ');
+
+    // Wing arch: not flapping — the tips flex gently upward while banking
+    // and when the air is carrying the bird. Smoothed so it breathes.
+    const liftCarry = Math.min(1, Math.max(0, state.lift) / 5);
+    const flexTarget = 0.12 * Math.abs(state.roll) + 0.07 * liftCarry;
+    this.wingFlex += (flexTarget - this.wingFlex) * Math.min(1, dt * 4);
+    this.leftWing.rotation.z = -this.wingFlex;
+    this.rightWing.rotation.z = this.wingFlex;
+
     this.applyTimeOfDay(config.timeOfDay);
 
     // Live-rebuild the air tells if the thermal field's config changed.
@@ -338,7 +353,7 @@ export class Renderer {
  * barely moves — stillness is the luxury — so the geometry is static and
  * the sim's orientation does the acting.
  */
-function makePlayerBird(): THREE.Group {
+function makePlayerBird(): { group: THREE.Group; leftWing: THREE.Mesh; rightWing: THREE.Mesh } {
   const group = new THREE.Group();
   const bodyMat = new THREE.MeshLambertMaterial({
     color: 0x2f5d4e,
@@ -369,25 +384,26 @@ function makePlayerBird(): THREE.Group {
   bodyGeo.computeVertexNormals();
   group.add(new THREE.Mesh(bodyGeo, bodyMat));
 
-  // wings: long, swept back, slight dihedral, a finger-tip notch
-  const wingTris: number[][] = [];
-  for (const s of [-1, 1]) {
+  // wings: long, swept back, slight dihedral — one mesh per side so each
+  // can flex at the root (the turn-arch animation rotates them about Z)
+  const buildWing = (s: -1 | 1): THREE.Mesh => {
     const rootFront = [s * 0.25, 0.08, -0.75];
     const rootBack = [s * 0.3, 0.06, 0.35];
     const mid = [s * 2.1, 0.32, 0.05];
     const tip = [s * 3.6, 0.6, 0.75];
     const tipBack = [s * 3.0, 0.5, 1.05];
-    // keep outward-consistent winding per side
-    if (s < 0) {
-      wingTris.push(rootFront, mid, rootBack, rootBack, mid, tipBack, mid, tip, tipBack);
-    } else {
-      wingTris.push(rootFront, rootBack, mid, rootBack, tipBack, mid, mid, tipBack, tip);
-    }
-  }
-  const wingGeo = new THREE.BufferGeometry();
-  wingGeo.setAttribute('position', new THREE.Float32BufferAttribute(wingTris.flat(), 3));
-  wingGeo.computeVertexNormals();
-  group.add(new THREE.Mesh(wingGeo, wingMat));
+    const tris =
+      s < 0
+        ? [rootFront, mid, rootBack, rootBack, mid, tipBack, mid, tip, tipBack]
+        : [rootFront, rootBack, mid, rootBack, tipBack, mid, mid, tipBack, tip];
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(tris.flat(), 3));
+    geo.computeVertexNormals();
+    return new THREE.Mesh(geo, wingMat);
+  };
+  const leftWing = buildWing(-1);
+  const rightWing = buildWing(1);
+  group.add(leftWing, rightWing);
 
   // tail fan
   const tailTris = [
@@ -399,7 +415,7 @@ function makePlayerBird(): THREE.Group {
   tailGeo.computeVertexNormals();
   group.add(new THREE.Mesh(tailGeo, bodyMat));
 
-  return group;
+  return { group, leftWing, rightWing };
 }
 
 /** A soaring silhouette: two swept triangles, dark against the sky. */

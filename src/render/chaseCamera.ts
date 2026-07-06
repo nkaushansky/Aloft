@@ -28,8 +28,11 @@ export class ChaseCamera {
       p.y - fwd.y * config.camDistance + config.camHeight,
       p.z - fwd.z * config.camDistance,
     );
-    // Don't let the camera dip into the terrain.
-    targetPos.y = Math.max(targetPos.y, terrain.heightAt(targetPos.x, targetPos.z) + 2);
+    // Don't let the camera dip into the terrain or the water.
+    targetPos.y = Math.max(
+      targetPos.y,
+      Math.max(terrain.heightAt(targetPos.x, targetPos.z), config.waterLevel) + 2,
+    );
 
     const targetLook = new THREE.Vector3(
       p.x + fwd.x * config.camLookAhead,
@@ -47,7 +50,10 @@ export class ChaseCamera {
     const k = 1 - Math.pow(1 - config.camLerp, dt * 60);
     this.pos.lerp(targetPos, k);
     this.look.lerp(targetLook, k);
-    this.pos.y = Math.max(this.pos.y, terrain.heightAt(this.pos.x, this.pos.z) + 2);
+    this.pos.y = Math.max(
+      this.pos.y,
+      Math.max(terrain.heightAt(this.pos.x, this.pos.z), config.waterLevel) + 2,
+    );
 
     camera.position.copy(this.pos);
     camera.lookAt(this.look);

@@ -181,6 +181,15 @@ export const config = {
   /** Wavelength of the rolling (m) — how far apart the swells sit. */
   terrainScale: 700,
 
+  // -------------------------------------- phase 4: the world grows heart
+  /**
+   * The water surface height (m). Terrain basins below this become lakes —
+   * raise it and the world floods into an archipelago, lower it and the
+   * lakes shrink to ponds. Water is a wind-tell (ripples), a thermal
+   * suppressor (cool ground), and later Q6's shorelines.
+   */
+  waterLevel: 14,
+
   // ------------------------------------------------ phase 3: face & voice
   /**
    * Where in the day you are, 0..1: golden dawn → noon → golden dusk → back.

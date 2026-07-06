@@ -3,20 +3,21 @@
 A serene, low-poly browser gliding game about reading the air and staying up.
 The tone for everything: **calm, gentle, zen** (see `CLAUDE.md`).
 
-Phases 0–2 passed (*gliding feels good · lift is satisfying · the air is
-legible*). This repo is currently **Phase 3**, which answers exactly one
-question:
+Phases 0–3 passed (*gliding feels good · lift is satisfying · the air is
+legible · face and voice landed*). This repo is currently **Phase 4**,
+which answers exactly one question:
 
-> **Does it have heart, not just physics?**
+> **Can you name a place you love?**
 
-You fly a low-poly soaring bird over rolling procedural countryside — a
-seeded field of thermals marked by dust and circling birds, ridge lift on
-every windward slope, wind streaks drifting downwind, a day cycle that
-swings from golden dawn to golden dusk (never full night), and a quiet
-ambient audio bed whose wind follows your airspeed. The flight model is
-built on one idea: **total energy = altitude + airspeed**, bleeding to
-drag — and lift, found in the world, is the only way to top the tank
-back up.
+You fly a low-poly soaring bird over seeded procedural country — lakes
+with wind-ripples, forests whose trees lean downwind, sun-baked dry land
+where the thermals are born (marked by dust and circling birds), ridge
+lift on every windward slope, a cairn on the summit, a dawn-to-dusk day
+cycle, and meditative generative chimes that quicken gently with speed.
+A seed *is* a map: the "newWorld" button deals a fresh countryside, and
+keeping a seed means you can always fly back. The flight model is one
+idea: **total energy = altitude + airspeed**, bleeding to drag — and
+lift, found in the world, is the only way to top the tank back up.
 
 - Design doc: [`docs/design-doc.html`](docs/design-doc.html) (living document)
 - Phase 0 brief: [`docs/phase0-kickoff.md`](docs/phase0-kickoff.md)

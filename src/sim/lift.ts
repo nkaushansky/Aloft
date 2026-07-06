@@ -1,5 +1,6 @@
 import type { Config } from './config';
 import type { TerrainProvider } from './terrain';
+import type { Biomes } from './biomes';
 import { smoothstep } from './math';
 import { makeRng } from './noise';
 
@@ -35,23 +36,43 @@ export class ThermalField implements LiftProvider {
   private thermals: Thermal[] = [];
   private builtKey = '';
 
-  constructor(private readonly cfg: Config) {}
+  constructor(
+    private readonly cfg: Config,
+    private readonly biomes: Biomes,
+  ) {}
 
   /** The current thermal list (rebuilt automatically when config changes). */
   list(): Thermal[] {
     const c = this.cfg;
-    const key = `${c.thermalCount}|${c.thermalSeed}|${c.thermalStrength}|${c.thermalRadius}|${c.thermalTop}`;
+    const key = `${c.thermalCount}|${c.thermalSeed}|${c.thermalStrength}|${c.thermalRadius}|${c.thermalTop}|${c.terrainSeed}|${c.waterLevel}`;
     if (key !== this.builtKey) {
       this.builtKey = key;
       const rng = makeRng(c.thermalSeed * 7919 + 17);
       this.thermals = [];
       for (let i = 0; i < c.thermalCount; i++) {
-        const angle = rng() * Math.PI * 2;
-        const dist = 400 + rng() * 1500; // never right on top of the launch
+        // Thermals are born over sun-baked ground: sample candidate spots and
+        // keep the driest — never over water, never under forest. The lift
+        // map becomes readable geography.
+        let bx = 0;
+        let bz = 0;
+        let best = -1;
+        for (let tries = 0; tries < 8; tries++) {
+          const angle = rng() * Math.PI * 2;
+          const dist = 400 + rng() * 1500; // never right on top of the launch
+          const x = Math.cos(angle) * dist;
+          const z = Math.sin(angle) * dist;
+          const score = this.biomes.drynessAt(x, z) + 0.05; // meadow is possible, dry is likely
+          if (score > best) {
+            best = score;
+            bx = x;
+            bz = z;
+          }
+          if (score > 0.6) break;
+        }
         // personality: ±40% size, ±35% strength, ±30% height around the averages
         this.thermals.push({
-          x: Math.cos(angle) * dist,
-          z: Math.sin(angle) * dist,
+          x: bx,
+          z: bz,
           radius: c.thermalRadius * (0.6 + rng() * 0.8),
           strength: c.thermalStrength * (0.65 + rng() * 0.7),
           top: c.thermalTop * (0.7 + rng() * 0.6),

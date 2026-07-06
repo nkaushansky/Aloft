@@ -218,7 +218,7 @@
     </svg>
 
     <div class="meta">
-      <span>v<b>0.9</b></span>
+      <span>v<b>0.10</b></span>
       <span>updated <b>Jul 5 2026</b></span>
       <span>phase <b>4 / the world grows heart</b></span>
       <span>title <b>provisional</b></span>
@@ -315,7 +315,13 @@
     <div class="q">
       <div class="qhead"><span class="qnum">Q6</span><h3>How does a flight end?</h3></div>
       <p><strong>Landing ends the session</strong> (noted Jul 5) — but as a chosen ending, never a fail. Two kinds of ground contact to separate: an <em>accidental brush</em> (skimming a hillside) should stay soft and recoverable, while a <em>deliberate landing</em> — settling onto a branch, a lakeshore, a rooftop perch, a light post — closes the flight like a resting breath. Perches double as destinations: places worth flying <em>to</em>. Ties into Q2's "chase one sunset to a resting place" arc idea. To flesh out: how intent is read (low + slow + near a perch?), what the landing moment looks and sounds like, and what a session summary shows (see the flight journal, parking lot).</p>
-      <span class="lean">leaning → <b>deliberate landing = gentle session end · accidental contact stays soft</b> · details in P4</span>
+      <span class="lean">leaning → <b>deliberate landing = gentle session end · accidental contact stays soft</b> · details in P5</span>
+    </div>
+
+    <div class="q decided">
+      <div class="qhead"><span class="qnum">Q7</span><h3>World generation — seeded procedural; a seed <em>is</em> a map</h3></div>
+      <p>Decided at the Phase 4 kickoff (Jul 5). The world is procedurally generated, but every generator is <strong>deterministic per seed</strong> — the same seed always rebuilds the identical world, hills and lakes and forests and thermals alike. That collapses the procedural-vs-hard-maps fork: a fresh seed means no two flights are the same; keeping a seed means "that one cool spot" is a place you can always fly back to. The flight journal (P5) records each flight's seed; favorite worlds are just favorite numbers. The default start is a <em>curated</em> home valley — a hand-picked seed, not a hand-built map. Hard-authored terrain never enters the pipeline; even the future real-elevation mode is just another TerrainProvider.</p>
+      <span class="lean set">decided → <b>seeded procedural · journal remembers seeds · curated home-valley seed as default</b></span>
     </div>
   </section>
   <hr class="divider">

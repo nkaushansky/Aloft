@@ -3,6 +3,7 @@ import { config } from './sim/config';
 import { AircraftState, createLaunchState } from './sim/state';
 import { step } from './sim/flightModel';
 import { ProceduralTerrain } from './sim/terrain';
+import { Biomes } from './sim/biomes';
 import { ThermalField, RidgeLift, CompositeLift } from './sim/lift';
 import { Renderer } from './render/renderer';
 import { ChaseCamera } from './render/chaseCamera';
@@ -16,9 +17,10 @@ import { AudioBed } from './audio/audioBed';
 
 const container = document.getElementById('app')!;
 const terrain = new ProceduralTerrain(config);
-const thermals = new ThermalField(config);
+const biomes = new Biomes(config, terrain);
+const thermals = new ThermalField(config, biomes);
 const lift = new CompositeLift([thermals, new RidgeLift(config, terrain)]);
-const renderer = new Renderer(container, terrain, thermals);
+const renderer = new Renderer(container, terrain, thermals, biomes);
 const chaseCam = new ChaseCamera();
 const input = new KeyboardInput();
 const hud = new DebugHud(container);
@@ -76,7 +78,19 @@ cam.add(config, 'camLookAhead', 0, 60, 1);
 cam.add(config, 'camFov', 40, 100, 1);
 const rebuildWorld = () => renderer.rebuildTerrain();
 const world = gui.addFolder('world');
-world.add(config, 'terrainSeed', 1, 99, 1).onFinishChange(rebuildWorld);
+// Q7: a seed IS a map — one click deals a fresh world, same seeds rebuild it
+world.add(
+  {
+    newWorld: () => {
+      config.terrainSeed = 1 + Math.floor(Math.random() * 98);
+      config.thermalSeed = 1 + Math.floor(Math.random() * 98);
+      rebuildWorld();
+    },
+  },
+  'newWorld',
+);
+world.add(config, 'terrainSeed', 1, 99, 1).listen().onFinishChange(rebuildWorld);
+world.add(config, 'waterLevel', 0, 45, 1).onFinishChange(rebuildWorld);
 world.add(config, 'terrainAmplitude', 0, 250, 5).onFinishChange(rebuildWorld);
 world.add(config, 'terrainScale', 250, 2000, 25).onFinishChange(rebuildWorld);
 world.add(config, 'hillHeight', 50, 500, 5).onFinishChange(rebuildWorld);
@@ -166,3 +180,11 @@ requestAnimationFrame(frame);
 // Test hooks: let automated flights read state and nudge config (harmless in play).
 (window as unknown as Record<string, unknown>).__aloftState = () => current;
 (window as unknown as Record<string, unknown>).__aloftConfig = config;
+(window as unknown as Record<string, unknown>).__aloftBiomes = {
+  sample: (x: number, z: number) => ({
+    h: terrain.heightAt(x, z),
+    water: biomes.isWater(x, z),
+    forest: biomes.forestAt(x, z),
+    dry: biomes.drynessAt(x, z),
+  }),
+};

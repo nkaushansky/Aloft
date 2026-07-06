@@ -97,8 +97,9 @@ export function step(
   s.position.y += s.climbRate * dt;
   s.position.z += fwd.z * s.airspeed * dt;
 
-  // --- ground contact: simple reset (Phase 0 only) -------------------------
-  const ground = terrain.heightAt(s.position.x, s.position.z);
+  // --- ground contact: simple reset (gentle landings arrive with Q6/P5) ---
+  // Water counts as ground: lakes sit above their lakebeds.
+  const ground = Math.max(terrain.heightAt(s.position.x, s.position.z), cfg.waterLevel);
   if (s.position.y <= ground + 0.5) {
     return createLaunchState(cfg);
   }

@@ -46,18 +46,21 @@ export class ProceduralTerrain implements TerrainProvider {
 
   heightAt(x: number, z: number): number {
     const c = this.cfg;
-    // rolling base
+    // rolling base — biased so the deepest basins dip below the waterline
+    // and become lakes (water sits at cfg.waterLevel)
     const rolling =
-      (fbm(x / c.terrainScale, z / c.terrainScale, c.terrainSeed) * 0.5 + 0.5) *
+      (fbm(x / c.terrainScale, z / c.terrainScale, c.terrainSeed) * 0.68 + 0.32) *
       c.terrainAmplitude;
     // hero hill on top
     const dx = x - c.hillX;
     const dz = z - c.hillZ;
     const r2 = (dx * dx + dz * dz) / (c.hillRadius * c.hillRadius);
     const hero = r2 > 12 ? 0 : c.hillHeight * Math.exp(-r2);
-    // ease to gentle ground near the launch point
+    // ease toward a calm meadow near the launch point — comfortably above
+    // the waterline, so home is always dry ground
     const launchDist2 = (x * x + z * z) / (400 * 400);
     const calm = launchDist2 >= 1 ? 1 : launchDist2 * launchDist2 * (3 - 2 * launchDist2);
-    return rolling * (0.25 + 0.75 * calm) + hero;
+    const launchPlain = c.waterLevel + 12;
+    return launchPlain + (rolling - launchPlain) * calm + hero;
   }
 }

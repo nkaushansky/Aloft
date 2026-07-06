@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import type { AircraftState } from '../sim/state';
 import type { TerrainProvider } from '../sim/terrain';
 import type { ThermalField } from '../sim/lift';
+import type { Biomes } from '../sim/biomes';
+import { makeRng } from '../sim/noise';
 import { config } from '../sim/config';
 
 const WORLD_SIZE = 6000;
@@ -10,6 +12,8 @@ const DUST_PER_THERMAL = 80;
 const BIRDS_PER_THERMAL = 2;
 const STREAK_COUNT = 140;
 const STREAK_BOX = 900; // wind streaks live in a box this wide around the craft
+const RIPPLE_COUNT = 90;
+const MAX_TREES = 1400;
 
 /**
  * Phase 2 scene: the air made visible. Rolling vertex-colored terrain from
@@ -30,7 +34,13 @@ export class Renderer {
   private skyTex!: THREE.CanvasTexture;
   private lastSkyT = -1;
   private readonly terrainMesh: THREE.Mesh;
-  private readonly pylons: THREE.Group;
+  private readonly waterMesh: THREE.Mesh;
+  private readonly ripples: THREE.LineSegments;
+  private readonly ripplePos: Float32Array;
+  private trunks: THREE.InstancedMesh | null = null;
+  private canopies: THREE.InstancedMesh | null = null;
+  private readonly cairn: THREE.Group;
+  private worldKey = '';
   private dust!: THREE.Points;
   private dustSeeds!: Float32Array;
   private birds!: THREE.Group;
@@ -42,6 +52,7 @@ export class Renderer {
     container: HTMLElement,
     private readonly terrain: TerrainProvider,
     private readonly thermalField: ThermalField,
+    private readonly biomes: Biomes,
   ) {
     this.gl = new THREE.WebGLRenderer({ antialias: true });
     this.gl.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -88,8 +99,23 @@ export class Renderer {
     );
     this.scene.add(this.terrainMesh);
 
-    this.pylons = new THREE.Group();
-    this.scene.add(this.pylons);
+    // still water — a mirror-calm plane; the wind writes on it with ripples
+    this.waterMesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(WORLD_SIZE, WORLD_SIZE),
+      new THREE.MeshLambertMaterial({ color: 0x7fa3ab, transparent: true, opacity: 0.92 }),
+    );
+    this.waterMesh.geometry.rotateX(-Math.PI / 2);
+    this.waterMesh.position.y = config.waterLevel;
+    this.scene.add(this.waterMesh);
+
+    const rippleParts = makeWaterRipples();
+    this.ripples = rippleParts.lines;
+    this.ripplePos = rippleParts.positions;
+    this.scene.add(this.ripples);
+
+    this.cairn = makeCairn();
+    this.scene.add(this.cairn);
+
     this.rebuildTerrain();
     this.rebuildAir();
 
@@ -115,45 +141,99 @@ export class Renderer {
     window.addEventListener('resize', () => this.onResize());
   }
 
-  /** Re-displace + recolor the terrain and reseat pylons from the provider. */
+  /** Re-displace + recolor the terrain from the providers, reseat the world. */
   rebuildTerrain(): void {
     const pos = this.terrainMesh.geometry.attributes.position;
     const col = this.terrainMesh.geometry.attributes.color;
     const meadow = new THREE.Color(0x8fa671);
-    const dry = new THREE.Color(0xa8a377);
+    const dry = new THREE.Color(0xb5a678);
     const stone = new THREE.Color(0x9a9183);
+    const sand = new THREE.Color(0xc9bb92);
+    const lakebed = new THREE.Color(0x8a967c);
+    const forestFloor = new THREE.Color(0x6c8757);
     const c = new THREE.Color();
     for (let i = 0; i < pos.count; i++) {
-      const h = this.terrain.heightAt(pos.getX(i), pos.getZ(i));
+      const x = pos.getX(i);
+      const z = pos.getZ(i);
+      const h = this.terrain.heightAt(x, z);
       pos.setY(i, h);
-      // meadow low, dry grass mid, stone high — height itself becomes legible
-      if (h < 90) c.copy(meadow).lerp(dry, h / 90);
-      else c.copy(dry).lerp(stone, Math.min(1, (h - 90) / 140));
+      const shore = config.waterLevel;
+      if (h < shore - 2) {
+        c.copy(lakebed);
+      } else if (h < shore + 4) {
+        // a sandy ring where land meets water — shorelines read from altitude
+        c.copy(sand);
+      } else {
+        c.copy(meadow).lerp(dry, this.biomes.drynessAt(x, z));
+        c.lerp(forestFloor, this.biomes.forestAt(x, z) * 0.65);
+        if (h > 110) c.lerp(stone, Math.min(1, (h - 110) / 130));
+      }
       col.setXYZ(i, c.r, c.g, c.b);
     }
     pos.needsUpdate = true;
     col.needsUpdate = true;
     this.terrainMesh.geometry.computeVertexNormals();
 
-    if (this.pylons.children.length === 0) {
-      const geo = new THREE.BoxGeometry(1.6, 1, 1.6);
-      const mats = [
-        new THREE.MeshLambertMaterial({ color: 0xc4bdac }),
-        new THREE.MeshLambertMaterial({ color: 0xb3a184 }),
-      ];
-      for (let i = 0; i < 90; i++) {
-        const pylon = new THREE.Mesh(geo, mats[i % 2]);
-        pylon.userData.h = 12 + Math.random() * 34;
-        pylon.userData.x = (Math.random() - 0.5) * 3600;
-        pylon.userData.z = (Math.random() - 0.5) * 3600;
-        this.pylons.add(pylon);
+    this.waterMesh.position.y = config.waterLevel;
+    this.rebuildForest();
+
+    // the cairn crowns the hero hill — one landmark you can steer by
+    const cy = this.terrain.heightAt(config.hillX, config.hillZ);
+    this.cairn.position.set(config.hillX, cy, config.hillZ);
+  }
+
+  /**
+   * Scatter trees where the forest biome says so — seeded, so the same world
+   * always grows the same woods. Trees lean gently downwind: a living tell.
+   */
+  private rebuildForest(): void {
+    if (this.trunks) {
+      this.scene.remove(this.trunks);
+      this.scene.remove(this.canopies!);
+      this.trunks.dispose();
+      this.canopies!.dispose();
+    }
+    const trunkGeo = new THREE.CylinderGeometry(0.35, 0.55, 4, 5);
+    trunkGeo.translate(0, 2, 0);
+    const canopyGeo = new THREE.ConeGeometry(3.1, 9, 6);
+    canopyGeo.translate(0, 8, 0);
+    const trunkMat = new THREE.MeshLambertMaterial({ color: 0x6e5a41, flatShading: true });
+    const canopyMat = new THREE.MeshLambertMaterial({ flatShading: true });
+    this.trunks = new THREE.InstancedMesh(trunkGeo, trunkMat, MAX_TREES);
+    this.canopies = new THREE.InstancedMesh(canopyGeo, canopyMat, MAX_TREES);
+
+    const rng = makeRng(config.terrainSeed * 101 + 7);
+    const windDir = (config.windDirDeg * Math.PI) / 180;
+    const leanAxis = new THREE.Vector3(-Math.cos(windDir), 0, Math.sin(windDir)); // ⊥ to wind
+    const m = new THREE.Matrix4();
+    const q = new THREE.Quaternion();
+    const green = new THREE.Color();
+    let n = 0;
+    const step = 42;
+    for (let gx = -WORLD_SIZE / 2; gx < WORLD_SIZE / 2 && n < MAX_TREES; gx += step) {
+      for (let gz = -WORLD_SIZE / 2; gz < WORLD_SIZE / 2 && n < MAX_TREES; gz += step) {
+        const x = gx + (rng() - 0.5) * step * 1.6;
+        const z = gz + (rng() - 0.5) * step * 1.6;
+        const density = this.biomes.forestAt(x, z);
+        if (density < 0.25 || rng() > density) continue;
+        const h = this.terrain.heightAt(x, z);
+        const scale = 0.75 + rng() * 0.8;
+        const lean = 0.05 + 0.06 * rng(); // downwind, gently — the forest shows the wind
+        q.setFromAxisAngle(leanAxis, lean);
+        m.compose(new THREE.Vector3(x, h, z), q, new THREE.Vector3(scale, scale, scale));
+        this.trunks.setMatrixAt(n, m);
+        this.canopies.setMatrixAt(n, m);
+        green.setHSL(0.29 + rng() * 0.05, 0.32 + rng() * 0.12, 0.3 + rng() * 0.09);
+        this.canopies.setColorAt(n, green);
+        n++;
       }
     }
-    for (const pylon of this.pylons.children) {
-      const { h, x, z } = pylon.userData;
-      pylon.scale.y = h;
-      pylon.position.set(x, this.terrain.heightAt(x, z) + h / 2, z);
-    }
+    this.trunks.count = n;
+    this.canopies.count = n;
+    this.trunks.instanceMatrix.needsUpdate = true;
+    this.canopies.instanceMatrix.needsUpdate = true;
+    if (this.canopies.instanceColor) this.canopies.instanceColor.needsUpdate = true;
+    this.scene.add(this.trunks, this.canopies);
   }
 
   /** Rebuild dust + birds when the thermal field changes (count/seed/GUI). */
@@ -224,16 +304,22 @@ export class Renderer {
 
     this.applyTimeOfDay(config.timeOfDay);
 
-    // Live-rebuild the air tells if the thermal field's config changed.
-    const key = `${config.thermalCount}|${config.thermalSeed}|${config.thermalStrength}|${config.thermalRadius}|${config.thermalTop}`;
+    // Live-rebuild the air tells / world if their config changed.
+    const key = `${config.thermalCount}|${config.thermalSeed}|${config.thermalStrength}|${config.thermalRadius}|${config.thermalTop}|${config.terrainSeed}|${config.waterLevel}`;
     if (key !== this.airKey) {
       this.airKey = key;
       this.rebuildAir();
+    }
+    const wKey = `${config.terrainSeed}|${config.terrainAmplitude}|${config.terrainScale}|${config.waterLevel}|${config.windDirDeg}|${config.hillHeight}|${config.hillX}|${config.hillZ}`;
+    if (wKey !== this.worldKey) {
+      if (this.worldKey !== '') this.rebuildTerrain();
+      this.worldKey = wKey;
     }
 
     this.animateDust(dt);
     this.animateBirds(dt);
     this.animateStreaks(dt, state);
+    this.animateRipples(dt, state);
 
     this.camera.fov = config.camFov;
     this.camera.updateProjectionMatrix();
@@ -292,7 +378,7 @@ export class Renderer {
       if (Math.abs(rx) > half || Math.abs(rz) > half) {
         x = state.position.x + (Math.random() - 0.5) * STREAK_BOX;
         z = state.position.z + (Math.random() - 0.5) * STREAK_BOX;
-        y = this.terrain.heightAt(x, z) + 6 + Math.random() * 130;
+        y = Math.max(this.terrain.heightAt(x, z), config.waterLevel) + 6 + Math.random() * 130;
       }
       p[i * 6] = x;
       p[i * 6 + 1] = y;
@@ -340,11 +426,90 @@ export class Renderer {
     (this.scene.fog as THREE.Fog).color.set(mix(0xd7ddd2, 0xe4c9a4));
   }
 
+  /** Wind-aligned dashes drifting across the lakes — the water shows the wind. */
+  private animateRipples(dt: number, state: AircraftState): void {
+    const dir = (config.windDirDeg * Math.PI) / 180;
+    const wx = -Math.sin(dir) * config.windSpeed * 0.45;
+    const wz = -Math.cos(dir) * config.windSpeed * 0.45;
+    const len = Math.max(3, config.windSpeed * 0.9);
+    const y = config.waterLevel + 0.25;
+    const half = 1100;
+    const p = this.ripplePos;
+    for (let i = 0; i < RIPPLE_COUNT; i++) {
+      let x = p[i * 6] + wx * dt;
+      let z = p[i * 6 + 2] + wz * dt;
+      const rx = x - state.position.x;
+      const rz = z - state.position.z;
+      const overLand = this.terrain.heightAt(x, z) > config.waterLevel - 0.5;
+      if (Math.abs(rx) > half || Math.abs(rz) > half || overLand) {
+        // find a watery spot near the craft; hide the ripple if none found
+        let placed = false;
+        for (let tries = 0; tries < 6; tries++) {
+          const cx = state.position.x + (Math.random() - 0.5) * half * 2;
+          const cz = state.position.z + (Math.random() - 0.5) * half * 2;
+          if (this.terrain.heightAt(cx, cz) < config.waterLevel - 1) {
+            x = cx;
+            z = cz;
+            placed = true;
+            break;
+          }
+        }
+        if (!placed) {
+          p[i * 6 + 1] = -50; // parked out of sight until water comes near
+          p[i * 6 + 4] = -50;
+          continue;
+        }
+      }
+      p[i * 6] = x;
+      p[i * 6 + 1] = y;
+      p[i * 6 + 2] = z;
+      p[i * 6 + 3] = x + (wx / (config.windSpeed * 0.45 || 1)) * len;
+      p[i * 6 + 4] = y;
+      p[i * 6 + 5] = z + (wz / (config.windSpeed * 0.45 || 1)) * len;
+    }
+    this.ripples.geometry.attributes.position.needsUpdate = true;
+  }
+
   private onResize(): void {
     this.camera.aspect = window.innerWidth / window.innerHeight;
     this.camera.updateProjectionMatrix();
     this.gl.setSize(window.innerWidth, window.innerHeight);
   }
+}
+
+/** Wind-ripple line pool for the lakes. */
+function makeWaterRipples(): { lines: THREE.LineSegments; positions: Float32Array } {
+  const positions = new Float32Array(RIPPLE_COUNT * 6);
+  positions.fill(-50); // parked below the world until placed on water
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  const lines = new THREE.LineSegments(
+    geo,
+    new THREE.LineBasicMaterial({ color: 0xe8f2ee, transparent: true, opacity: 0.45 }),
+  );
+  lines.frustumCulled = false;
+  return { lines, positions };
+}
+
+/** A stone cairn for the hero hill's summit — the world's first name-able landmark. */
+function makeCairn(): THREE.Group {
+  const group = new THREE.Group();
+  const mat = new THREE.MeshLambertMaterial({ color: 0x8d8578, flatShading: true });
+  const stones: Array<[number, number]> = [
+    [5.2, 3.4],
+    [3.9, 2.9],
+    [2.8, 2.5],
+    [1.8, 2.2],
+  ];
+  let y = 0;
+  for (const [w, h] of stones) {
+    const stone = new THREE.Mesh(new THREE.BoxGeometry(w, h, w * 0.9), mat);
+    stone.position.set((Math.random() - 0.5) * 0.5, y + h / 2, (Math.random() - 0.5) * 0.5);
+    stone.rotation.y = Math.random() * 0.6;
+    group.add(stone);
+    y += h * 0.82;
+  }
+  return group;
 }
 
 /**

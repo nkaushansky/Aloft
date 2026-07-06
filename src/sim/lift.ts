@@ -49,7 +49,30 @@ export class ThermalField implements LiftProvider {
       this.builtKey = key;
       const rng = makeRng(c.thermalSeed * 7919 + 17);
       this.thermals = [];
-      for (let i = 0; i < c.thermalCount; i++) {
+
+      // The home thermal: every world guarantees one generous column close
+      // to the launch — the first rung of the ladder is always in reach.
+      {
+        let hx = 0;
+        let hz = 0;
+        for (let tries = 0; tries < 10; tries++) {
+          const angle = rng() * Math.PI * 2;
+          const dist = 320 + rng() * 220; // 320–540m out: visible from launch
+          hx = Math.cos(angle) * dist;
+          hz = Math.sin(angle) * dist;
+          if (!this.biomes.isWater(hx, hz) && this.biomes.forestAt(hx, hz) < 0.5) break;
+        }
+        this.thermals.push({
+          x: hx,
+          z: hz,
+          // wide and forgiving: even an off-center circle catches solid lift
+          radius: c.thermalRadius * (1.4 + rng() * 0.3),
+          strength: c.thermalStrength * (1.0 + rng() * 0.25),
+          top: c.thermalTop,
+        });
+      }
+
+      for (let i = 1; i < c.thermalCount; i++) {
         // Thermals are born over sun-baked ground: sample candidate spots and
         // keep the driest — never over water, never under forest. The lift
         // map becomes readable geography.
@@ -58,7 +81,7 @@ export class ThermalField implements LiftProvider {
         let best = -1;
         for (let tries = 0; tries < 8; tries++) {
           const angle = rng() * Math.PI * 2;
-          const dist = 400 + rng() * 1500; // never right on top of the launch
+          const dist = 350 + rng() * 1250; // a denser ring — the ladder has rungs
           const x = Math.cos(angle) * dist;
           const z = Math.sin(angle) * dist;
           const score = this.biomes.drynessAt(x, z) + 0.05; // meadow is possible, dry is likely

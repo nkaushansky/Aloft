@@ -112,8 +112,10 @@ export const config = {
   maxAirspeed: 55,
 
   // --------------------------------------------------------- launch / reset
-  /** Height (m) you relaunch from — the size of your starting energy tank. */
-  launchAltitude: 120,
+  /** Height (m) you relaunch from — the size of your starting energy tank.
+   *  At a ~13:1 glide that's ~2.6km of still-air range: enough to reach the
+   *  home thermal with room to explore on the way. */
+  launchAltitude: 200,
 
   /** Speed (m/s) you relaunch at. Slightly above cruise: a confident start. */
   launchAirspeed: 24,
@@ -158,7 +160,7 @@ export const config = {
    *  ~1.4 m/s glide sink means an average core lifts you at ~5.5 m/s — a
    *  boost you feel in your stomach, arriving smoothly because the column's
    *  edge is a gaussian, never a wall. */
-  thermalCount: 6,
+  thermalCount: 9,
   thermalSeed: 3,
   thermalRadius: 100,
   thermalStrength: 7,

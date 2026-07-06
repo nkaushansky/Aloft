@@ -180,6 +180,7 @@ requestAnimationFrame(frame);
 // Test hooks: let automated flights read state and nudge config (harmless in play).
 (window as unknown as Record<string, unknown>).__aloftState = () => current;
 (window as unknown as Record<string, unknown>).__aloftConfig = config;
+(window as unknown as Record<string, unknown>).__aloftThermals = () => thermals.list();
 (window as unknown as Record<string, unknown>).__aloftBiomes = {
   sample: (x: number, z: number) => ({
     h: terrain.heightAt(x, z),

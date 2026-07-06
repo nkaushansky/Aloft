@@ -8,7 +8,7 @@ import { config } from '../sim/config';
  */
 export class DebugHud {
   private readonly el: HTMLDivElement;
-  private visible = true;
+  private visible = false; // hidden by default — the FlightHud is the game's face
 
   constructor(container: HTMLElement) {
     this.el = document.createElement('div');
@@ -17,6 +17,7 @@ export class DebugHud {
       'background:rgba(24,32,26,0.72)', 'color:#dfe8dc', 'border-radius:8px',
       'font:13px/1.5 ui-monospace,Menlo,Consolas,monospace',
       'white-space:pre', 'pointer-events:none', 'z-index:10',
+      'display:none',
     ].join(';');
     container.appendChild(this.el);
   }

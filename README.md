@@ -35,7 +35,7 @@ npm run build   # typecheck + production build
 | `S` / `↓` | pitch up (climb — spend speed) |
 | `A` / `←`, `D` / `→` | roll / banked turn |
 | `R` | reset to launch |
-| `H` | toggle debug HUD |
+| `H` | toggle the debug/tuning readout (flight instruments are always on) |
 
 Every feel constant is a live slider in the lil-gui panel (top right).
 The canonical values live in [`src/sim/config.ts`](src/sim/config.ts) —

@@ -8,6 +8,7 @@ import { Renderer } from './render/renderer';
 import { ChaseCamera } from './render/chaseCamera';
 import { KeyboardInput } from './input/keyboard';
 import { DebugHud } from './ui/debugHud';
+import { FlightHud } from './ui/flightHud';
 import { StickIndicator } from './ui/stickIndicator';
 
 // Wiring only: input -> sim.step(dt) -> render. All feel lives in sim/.
@@ -20,6 +21,7 @@ const renderer = new Renderer(container, terrain, thermals);
 const chaseCam = new ChaseCamera();
 const input = new KeyboardInput();
 const hud = new DebugHud(container);
+const flightHud = new FlightHud(container);
 const stick = new StickIndicator(container);
 
 let current: AircraftState = createLaunchState(config);
@@ -139,6 +141,7 @@ function frame(now: number): void {
   const drawn = lerpState(previous, current, alpha);
   chaseCam.update(renderer.camera, drawn, frameDt, terrain);
   hud.update(drawn);
+  flightHud.update(drawn);
   stick.update(drawn);
   renderer.render(drawn, frameDt);
 }

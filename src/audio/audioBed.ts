@@ -25,8 +25,8 @@ export class AudioBed {
   private nextNoteTime = 0;
   private muted = false;
 
-  /** A-minor pentatonic around middle: calm, no wrong notes. */
-  private static readonly SCALE = [220.0, 261.63, 293.66, 329.63, 392.0, 440.0];
+  /** A-minor pentatonic, sitting low: meditative, no wrong notes. */
+  private static readonly SCALE = [164.81, 196.0, 220.0, 261.63, 293.66, 329.63];
 
   start(): void {
     if (this.ctx) return;
@@ -83,11 +83,21 @@ export class AudioBed {
     lfo.connect(lfoDepth).connect(droneGain.gain);
     lfo.start();
 
-    // --- chimes bus --------------------------------------------------------
+    // --- chimes bus, with a soft echo so each bell hangs in space ---------
     this.chimeOut = ctx.createGain();
     this.chimeOut.gain.value = 1;
     this.chimeOut.connect(this.master);
-    this.nextNoteTime = ctx.currentTime + 1.2;
+    const delay = ctx.createDelay(2);
+    delay.delayTime.value = 0.7;
+    const feedback = ctx.createGain();
+    feedback.gain.value = 0.32;
+    const echoTone = ctx.createBiquadFilter();
+    echoTone.type = 'lowpass';
+    echoTone.frequency.value = 900; // echoes come back darker, like distance
+    this.chimeOut.connect(delay);
+    delay.connect(echoTone).connect(feedback).connect(delay);
+    feedback.connect(this.master);
+    this.nextNoteTime = ctx.currentTime + 1.6;
   }
 
   /** Follow flight state: wind whispers with speed, chimes quicken with it. */
@@ -99,16 +109,18 @@ export class AudioBed {
     this.windGain.gain.setTargetAtTime(0.006 + 0.045 * speedFactor, t, 0.3);
     this.windFilter.frequency.setTargetAtTime(240 + 550 * speedFactor, t, 0.3);
 
-    // schedule the next bell just ahead of time; spacing shrinks with speed
+    // schedule the next bell just ahead of time; spacing shrinks with speed,
+    // but never below a meditative floor — at high speed the wind carries
+    // the urgency, the bells stay unhurried
     if (t > this.nextNoteTime - 0.15) {
       this.playChime(Math.max(this.nextNoteTime, t + 0.05), speedFactor);
-      const base = 5.4 - 3.8 * speedFactor; // gentle stroll → brighter walk
+      const base = 7.5 - 4.2 * speedFactor;
       const jitter = 0.65 + Math.random() * 0.7;
-      this.nextNoteTime = Math.max(this.nextNoteTime, t) + Math.max(0.8, base * jitter);
+      this.nextNoteTime = Math.max(this.nextNoteTime, t) + Math.max(1.8, base * jitter);
     }
   }
 
-  /** One soft bell: sine + a whisper of its octave, long unhurried decay. */
+  /** One soft bell: a slow bloom rather than a strike, fading over ~6s. */
   private playChime(when: number, speedFactor: number): void {
     const ctx = this.ctx!;
     const scale = AudioBed.SCALE;
@@ -119,19 +131,19 @@ export class AudioBed {
     );
     const freq = scale[idx];
     for (const [mult, level] of [
-      [1, 0.05],
-      [2, 0.011],
+      [1, 0.048],
+      [2, 0.008],
     ] as const) {
       const osc = ctx.createOscillator();
       osc.type = 'sine';
       osc.frequency.value = freq * mult;
       const env = ctx.createGain();
       env.gain.setValueAtTime(0, when);
-      env.gain.linearRampToValueAtTime(level, when + 0.06);
-      env.gain.exponentialRampToValueAtTime(0.0001, when + 3.4);
+      env.gain.linearRampToValueAtTime(level, when + 0.35); // bloom, don't strike
+      env.gain.exponentialRampToValueAtTime(0.0001, when + 6.0);
       osc.connect(env).connect(this.chimeOut);
       osc.start(when);
-      osc.stop(when + 3.6);
+      osc.stop(when + 6.2);
     }
   }
 

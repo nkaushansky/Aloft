@@ -180,6 +180,20 @@ export const config = {
 
   /** Wavelength of the rolling (m) — how far apart the swells sit. */
   terrainScale: 700,
+
+  // ------------------------------------------------ phase 3: face & voice
+  /**
+   * Where in the day you are, 0..1: golden dawn → noon → golden dusk → back.
+   * Never full night — dusk is as dark as Aloft gets. A free sunset to
+   * chase, exactly as the art direction promised.
+   */
+  timeOfDay: 0.15,
+
+  /** Whether time drifts on its own (the slider still works either way). */
+  dayAuto: true,
+
+  /** Seconds for a full day loop. Long enough to feel like weather. */
+  dayLength: 480,
 };
 
 export type Config = typeof config;

@@ -20,7 +20,12 @@ export class Renderer {
   readonly scene = new THREE.Scene();
   readonly camera: THREE.PerspectiveCamera;
   private readonly gl: THREE.WebGLRenderer;
-  private readonly wedge: THREE.Mesh;
+  private readonly craft: THREE.Group;
+  private sun!: THREE.DirectionalLight;
+  private hemi!: THREE.HemisphereLight;
+  private skyCanvas!: HTMLCanvasElement;
+  private skyTex!: THREE.CanvasTexture;
+  private lastSkyT = -1;
   private readonly terrainMesh: THREE.Mesh;
   private readonly pylons: THREE.Group;
   private dust!: THREE.Points;
@@ -47,13 +52,20 @@ export class Renderer {
       8000,
     );
 
-    this.scene.background = makeSkyTexture();
+    this.skyCanvas = document.createElement('canvas');
+    this.skyCanvas.width = 2;
+    this.skyCanvas.height = 512;
+    this.skyTex = new THREE.CanvasTexture(this.skyCanvas);
+    this.skyTex.colorSpace = THREE.SRGBColorSpace;
+    this.scene.background = this.skyTex;
     this.scene.fog = new THREE.Fog(0xd7ddd2, 450, 3400);
 
-    const sun = new THREE.DirectionalLight(0xfff2dd, 2.2);
-    sun.position.set(300, 500, 200);
-    this.scene.add(sun);
-    this.scene.add(new THREE.HemisphereLight(0xcfe0d8, 0x8a8468, 0.9));
+    this.sun = new THREE.DirectionalLight(0xfff2dd, 2.2);
+    this.sun.position.set(300, 500, 200);
+    this.scene.add(this.sun);
+    this.hemi = new THREE.HemisphereLight(0xcfe0d8, 0x8a8468, 0.9);
+    this.scene.add(this.hemi);
+    this.applyTimeOfDay(config.timeOfDay);
 
     const terrainGeo = new THREE.PlaneGeometry(
       WORLD_SIZE, WORLD_SIZE, TERRAIN_SEGMENTS, TERRAIN_SEGMENTS,
@@ -91,8 +103,8 @@ export class Renderer {
     }
     this.scene.add(this.streaks);
 
-    this.wedge = makeWedge();
-    this.scene.add(this.wedge);
+    this.craft = makePlayerBird();
+    this.scene.add(this.craft);
 
     window.addEventListener('resize', () => this.onResize());
   }
@@ -191,10 +203,11 @@ export class Renderer {
 
   /** Draw one frame from (interpolated) sim state. */
   render(state: AircraftState, dt: number): void {
-    this.wedge.position.set(state.position.x, state.position.y, state.position.z);
+    this.craft.position.set(state.position.x, state.position.y, state.position.z);
     // YXZ: yaw about Y, then pitch about X, then roll about the nose.
     // Nose points -Z, so positive rotation.x is nose-up and roll flips sign.
-    this.wedge.rotation.set(state.pitch, state.yaw, -state.roll, 'YXZ');
+    this.craft.rotation.set(state.pitch, state.yaw, -state.roll, 'YXZ');
+    this.applyTimeOfDay(config.timeOfDay);
 
     // Live-rebuild the air tells if the thermal field's config changed.
     const key = `${config.thermalCount}|${config.thermalSeed}|${config.thermalStrength}|${config.thermalRadius}|${config.thermalTop}`;
@@ -276,6 +289,42 @@ export class Renderer {
     this.streaks.geometry.attributes.position.needsUpdate = true;
   }
 
+  /**
+   * The day cycle: the sun swings low→high→low (never full night — dusk is
+   * as dark as Aloft gets), light warms toward amber at the ends of the day,
+   * and the sky/fog palette follows. Driven by config.timeOfDay in [0, 1].
+   */
+  private applyTimeOfDay(t: number): void {
+    if (Math.abs(t - this.lastSkyT) < 0.002) return;
+    this.lastSkyT = t;
+
+    const phase = t * Math.PI * 2;
+    const elev = (32 + 28 * Math.sin(phase)) * (Math.PI / 180); // 4°..60°
+    const azim = 0.9 + 0.4 * Math.cos(phase);
+    this.sun.position.set(
+      Math.cos(elev) * Math.sin(azim) * 800,
+      Math.sin(elev) * 800,
+      Math.cos(elev) * Math.cos(azim) * 800,
+    );
+    // warmth: 0 at high noon, 1 at the golden ends of the day
+    const warmth = 1 - Math.min(1, (elev * (180 / Math.PI) - 4) / 40);
+    this.sun.color.copy(new THREE.Color(0xfff2dd).lerp(new THREE.Color(0xf2b26a), warmth));
+    this.sun.intensity = 2.2 - 0.7 * warmth;
+    this.hemi.intensity = 0.9 - 0.25 * warmth;
+
+    const mix = (a: number, b: number) => '#' + new THREE.Color(a).lerp(new THREE.Color(b), warmth).getHexString();
+    const ctx = this.skyCanvas.getContext('2d')!;
+    const grad = ctx.createLinearGradient(0, 0, 0, 512);
+    grad.addColorStop(0, mix(0xa8c4d8, 0xc98f6b));
+    grad.addColorStop(0.55, mix(0xcfdcd8, 0xe0b98c));
+    grad.addColorStop(1, mix(0xe3e6da, 0xead9b4));
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 2, 512);
+    this.skyTex.needsUpdate = true;
+
+    (this.scene.fog as THREE.Fog).color.set(mix(0xd7ddd2, 0xe4c9a4));
+  }
+
   private onResize(): void {
     this.camera.aspect = window.innerWidth / window.innerHeight;
     this.camera.updateProjectionMatrix();
@@ -283,27 +332,74 @@ export class Renderer {
   }
 }
 
-/** Flat-shaded arrowhead: nose at -Z, a raised tail fin so bank reads. */
-function makeWedge(): THREE.Mesh {
-  const nose = [0, 0.25, -2.8];
-  const left = [-1.5, 0, 1.4];
-  const right = [1.5, 0, 1.4];
-  const top = [0, 0.9, 1.0];
-  const tris = [
-    [nose, right, top],
-    [nose, top, left],
-    [nose, left, right],
-    [left, top, right],
-  ].flat(2);
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.Float32BufferAttribute(tris, 3));
-  geo.computeVertexNormals();
-  const mat = new THREE.MeshLambertMaterial({
+/**
+ * The player: a low-poly soaring bird, nose at -Z. Long swept wings with a
+ * slight dihedral read bank instantly; the body line reads pitch. A soarer
+ * barely moves — stillness is the luxury — so the geometry is static and
+ * the sim's orientation does the acting.
+ */
+function makePlayerBird(): THREE.Group {
+  const group = new THREE.Group();
+  const bodyMat = new THREE.MeshLambertMaterial({
     color: 0x2f5d4e,
     flatShading: true,
     side: THREE.DoubleSide,
   });
-  return new THREE.Mesh(geo, mat);
+  const wingMat = new THREE.MeshLambertMaterial({
+    color: 0x417262,
+    flatShading: true,
+    side: THREE.DoubleSide,
+  });
+
+  // body: slim, keel-breasted diamond
+  const nose = [0, 0.02, -2.1];
+  const tail = [0, 0.1, 1.5];
+  const left = [-0.38, -0.02, -0.3];
+  const right = [0.38, -0.02, -0.3];
+  const top = [0, 0.34, -0.55];
+  const keel = [0, -0.32, -0.35];
+  const bodyTris = [
+    [nose, left, top], [nose, top, right],
+    [nose, keel, left], [nose, right, keel],
+    [tail, top, left], [tail, right, top],
+    [tail, left, keel], [tail, keel, right],
+  ].flat(2);
+  const bodyGeo = new THREE.BufferGeometry();
+  bodyGeo.setAttribute('position', new THREE.Float32BufferAttribute(bodyTris, 3));
+  bodyGeo.computeVertexNormals();
+  group.add(new THREE.Mesh(bodyGeo, bodyMat));
+
+  // wings: long, swept back, slight dihedral, a finger-tip notch
+  const wingTris: number[][] = [];
+  for (const s of [-1, 1]) {
+    const rootFront = [s * 0.25, 0.08, -0.75];
+    const rootBack = [s * 0.3, 0.06, 0.35];
+    const mid = [s * 2.1, 0.32, 0.05];
+    const tip = [s * 3.6, 0.6, 0.75];
+    const tipBack = [s * 3.0, 0.5, 1.05];
+    // keep outward-consistent winding per side
+    if (s < 0) {
+      wingTris.push(rootFront, mid, rootBack, rootBack, mid, tipBack, mid, tip, tipBack);
+    } else {
+      wingTris.push(rootFront, rootBack, mid, rootBack, tipBack, mid, mid, tipBack, tip);
+    }
+  }
+  const wingGeo = new THREE.BufferGeometry();
+  wingGeo.setAttribute('position', new THREE.Float32BufferAttribute(wingTris.flat(), 3));
+  wingGeo.computeVertexNormals();
+  group.add(new THREE.Mesh(wingGeo, wingMat));
+
+  // tail fan
+  const tailTris = [
+    [0, 0.1, 1.2], [-0.65, 0.16, 2.35], [0, 0.12, 2.15],
+    [0, 0.1, 1.2], [0, 0.12, 2.15], [0.65, 0.16, 2.35],
+  ].flat(2);
+  const tailGeo = new THREE.BufferGeometry();
+  tailGeo.setAttribute('position', new THREE.Float32BufferAttribute(tailTris, 3));
+  tailGeo.computeVertexNormals();
+  group.add(new THREE.Mesh(tailGeo, bodyMat));
+
+  return group;
 }
 
 /** A soaring silhouette: two swept triangles, dark against the sky. */
@@ -354,19 +450,3 @@ function makeCheckerTexture(): THREE.Texture {
   return tex;
 }
 
-/** Vertical gradient sky: haze at the horizon, up to pale blue. */
-function makeSkyTexture(): THREE.Texture {
-  const canvas = document.createElement('canvas');
-  canvas.width = 2;
-  canvas.height = 512;
-  const ctx = canvas.getContext('2d')!;
-  const grad = ctx.createLinearGradient(0, 0, 0, 512);
-  grad.addColorStop(0, '#a8c4d8');
-  grad.addColorStop(0.55, '#cfdcd8');
-  grad.addColorStop(1, '#e3e6da');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, 2, 512);
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  return tex;
-}

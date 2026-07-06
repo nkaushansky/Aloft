@@ -10,6 +10,7 @@ import { KeyboardInput } from './input/keyboard';
 import { DebugHud } from './ui/debugHud';
 import { FlightHud } from './ui/flightHud';
 import { StickIndicator } from './ui/stickIndicator';
+import { AudioBed } from './audio/audioBed';
 
 // Wiring only: input -> sim.step(dt) -> render. All feel lives in sim/.
 
@@ -33,6 +34,13 @@ input.onKey('KeyR', () => {
   chaseCam.snap();
 });
 input.onKey('KeyH', () => hud.toggle());
+
+// Audio wakes on the first gesture (browser autoplay policy); M mutes.
+const audio = new AudioBed();
+const wake = () => audio.start();
+window.addEventListener('keydown', wake, { once: true });
+window.addEventListener('pointerdown', wake, { once: true });
+input.onKey('KeyM', () => audio.toggleMute());
 
 // --- live tuning panel ----------------------------------------------------
 const gui = new GUI({ title: 'Aloft — feel tuning' });
@@ -85,6 +93,10 @@ air.add(config, 'thermalRadius', 30, 300, 5);
 air.add(config, 'thermalTop', 100, 900, 10);
 air.add(config, 'ridgeGain', 0, 3, 0.05);
 air.add(config, 'ridgeCeiling', 50, 600, 10);
+const day = gui.addFolder('day');
+day.add(config, 'timeOfDay', 0, 1, 0.001).listen();
+day.add(config, 'dayAuto');
+day.add(config, 'dayLength', 60, 1800, 10);
 launch.close();
 world.close();
 
@@ -137,16 +149,20 @@ function frame(now: number): void {
     accumulator -= SIM_DT;
   }
 
+  if (config.dayAuto) config.timeOfDay = (config.timeOfDay + frameDt / config.dayLength) % 1;
+
   const alpha = accumulator / SIM_DT;
   const drawn = lerpState(previous, current, alpha);
   chaseCam.update(renderer.camera, drawn, frameDt, terrain);
   hud.update(drawn);
   flightHud.update(drawn);
   stick.update(drawn);
+  audio.update(drawn);
   renderer.render(drawn, frameDt);
 }
 
 requestAnimationFrame(frame);
 
-// Test hook: lets automated flights read live sim state (harmless in play).
+// Test hooks: let automated flights read state and nudge config (harmless in play).
 (window as unknown as Record<string, unknown>).__aloftState = () => current;
+(window as unknown as Record<string, unknown>).__aloftConfig = config;

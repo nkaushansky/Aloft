@@ -107,10 +107,12 @@ air.add(config, 'thermalRadius', 30, 300, 5);
 air.add(config, 'thermalTop', 100, 900, 10);
 air.add(config, 'ridgeGain', 0, 3, 0.05);
 air.add(config, 'ridgeCeiling', 50, 600, 10);
-const day = gui.addFolder('day');
+const day = gui.addFolder('day & sky');
 day.add(config, 'timeOfDay', 0, 1, 0.001).listen();
 day.add(config, 'dayAuto');
 day.add(config, 'dayLength', 60, 1800, 10);
+day.add(config, 'cloudCount', 0, 16, 1);
+day.add(config, 'cloudShadow', 0, 0.35, 0.01);
 launch.close();
 world.close();
 
@@ -181,6 +183,7 @@ requestAnimationFrame(frame);
 (window as unknown as Record<string, unknown>).__aloftState = () => current;
 (window as unknown as Record<string, unknown>).__aloftConfig = config;
 (window as unknown as Record<string, unknown>).__aloftThermals = () => thermals.list();
+(window as unknown as Record<string, unknown>).__aloftLandmarks = () => renderer.landmarks;
 (window as unknown as Record<string, unknown>).__aloftBiomes = {
   sample: (x: number, z: number) => ({
     h: terrain.heightAt(x, z),

@@ -40,6 +40,13 @@ export class Renderer {
   private trunks: THREE.InstancedMesh | null = null;
   private canopies: THREE.InstancedMesh | null = null;
   private readonly cairn: THREE.Group;
+  private readonly landmarksGroup = new THREE.Group();
+  readonly landmarks: { tree: { x: number; z: number }; stones: { x: number; z: number } } = {
+    tree: { x: 0, z: 0 },
+    stones: { x: 0, z: 0 },
+  };
+  private clouds: Array<{ group: THREE.Group; shadow: THREE.Mesh; drifts: boolean }> = [];
+  private readonly cloudLayer = new THREE.Group();
   private worldKey = '';
   private dust!: THREE.Points;
   private dustSeeds!: Float32Array;
@@ -115,6 +122,8 @@ export class Renderer {
 
     this.cairn = makeCairn();
     this.scene.add(this.cairn);
+    this.scene.add(this.landmarksGroup);
+    this.scene.add(this.cloudLayer);
 
     this.rebuildTerrain();
     this.rebuildAir();
@@ -180,6 +189,51 @@ export class Renderer {
     // the cairn crowns the hero hill — one landmark you can steer by
     const cy = this.terrain.heightAt(config.hillX, config.hillZ);
     this.cairn.position.set(config.hillX, cy, config.hillZ);
+
+    this.rebuildLandmarks();
+  }
+
+  /** Seeded one-off landmarks: places with names waiting for them. */
+  private rebuildLandmarks(): void {
+    this.landmarksGroup.clear();
+    const rng = makeRng(config.terrainSeed * 997 + 3);
+    const findSpot = (ok: (x: number, z: number) => boolean): { x: number; z: number } => {
+      let x = 800;
+      let z = 800;
+      for (let tries = 0; tries < 50; tries++) {
+        const angle = rng() * Math.PI * 2;
+        const dist = 500 + rng() * 950;
+        x = Math.cos(angle) * dist;
+        z = Math.sin(angle) * dist;
+        if (ok(x, z)) break;
+      }
+      return { x, z };
+    };
+
+    // the old tree: a lone deciduous giant on open ground
+    const treeSpot = findSpot(
+      (x, z) =>
+        !this.biomes.isWater(x, z) &&
+        this.biomes.forestAt(x, z) < 0.3 &&
+        this.terrain.heightAt(x, z) > config.waterLevel + 5,
+    );
+    this.landmarks.tree = treeSpot;
+    const tree = makeLoneTree();
+    tree.position.set(treeSpot.x, this.terrain.heightAt(treeSpot.x, treeSpot.z), treeSpot.z);
+    this.landmarksGroup.add(tree);
+
+    // the standing stones: a quiet ring out in the dry country
+    const stoneSpot = findSpot(
+      (x, z) => this.biomes.drynessAt(x, z) > 0.35 && !this.biomes.isWater(x, z),
+    );
+    this.landmarks.stones = stoneSpot;
+    const stones = makeStandingStones(rng);
+    stones.position.set(
+      stoneSpot.x,
+      this.terrain.heightAt(stoneSpot.x, stoneSpot.z),
+      stoneSpot.z,
+    );
+    this.landmarksGroup.add(stones);
   }
 
   /**
@@ -285,6 +339,32 @@ export class Renderer {
       }
     }
     this.scene.add(this.birds);
+
+    // clouds: a cumulus cap over every thermal (the sky marks the lift, the
+    // way real soaring pilots read it) plus free drifters for the postcard
+    this.cloudLayer.clear();
+    this.clouds = [];
+    const addCloud = (x: number, y: number, z: number, size: number, drifts: boolean) => {
+      const group = makeCloud(size);
+      group.position.set(x, y, z);
+      const shadow = makeCloudShadow(size);
+      shadow.position.set(x, 0, z);
+      this.cloudLayer.add(group, shadow);
+      this.clouds.push({ group, shadow, drifts });
+    };
+    for (const t of thermals) {
+      const ground = this.terrain.heightAt(t.x, t.z);
+      addCloud(t.x, ground + t.top + 70, t.z, t.radius * 1.35, false);
+    }
+    for (let i = 0; i < config.cloudCount; i++) {
+      addCloud(
+        (Math.random() - 0.5) * 4200,
+        420 + Math.random() * 160,
+        (Math.random() - 0.5) * 4200,
+        130 + Math.random() * 110,
+        true,
+      );
+    }
   }
 
   /** Draw one frame from (interpolated) sim state. */
@@ -305,7 +385,7 @@ export class Renderer {
     this.applyTimeOfDay(config.timeOfDay);
 
     // Live-rebuild the air tells / world if their config changed.
-    const key = `${config.thermalCount}|${config.thermalSeed}|${config.thermalStrength}|${config.thermalRadius}|${config.thermalTop}|${config.terrainSeed}|${config.waterLevel}`;
+    const key = `${config.thermalCount}|${config.thermalSeed}|${config.thermalStrength}|${config.thermalRadius}|${config.thermalTop}|${config.terrainSeed}|${config.waterLevel}|${config.cloudCount}`;
     if (key !== this.airKey) {
       this.airKey = key;
       this.rebuildAir();
@@ -320,6 +400,7 @@ export class Renderer {
     this.animateBirds(dt);
     this.animateStreaks(dt, state);
     this.animateRipples(dt, state);
+    this.animateClouds(dt, state);
 
     this.camera.fov = config.camFov;
     this.camera.updateProjectionMatrix();
@@ -470,11 +551,136 @@ export class Renderer {
     this.ripples.geometry.attributes.position.needsUpdate = true;
   }
 
+  /** Drift the free clouds downwind; drape every cloud's shadow on the land. */
+  private animateClouds(dt: number, state: AircraftState): void {
+    const dir = (config.windDirDeg * Math.PI) / 180;
+    const wx = -Math.sin(dir) * config.windSpeed * 0.5;
+    const wz = -Math.cos(dir) * config.windSpeed * 0.5;
+    for (const cloud of this.clouds) {
+      if (cloud.drifts) {
+        cloud.group.position.x += wx * dt;
+        cloud.group.position.z += wz * dt;
+        // wrap around the craft so the sky never empties
+        const rx = cloud.group.position.x - state.position.x;
+        const rz = cloud.group.position.z - state.position.z;
+        if (Math.abs(rx) > 2400 || Math.abs(rz) > 2400) {
+          cloud.group.position.x = state.position.x - Math.sign(rx || 1) * 2300 + (Math.random() - 0.5) * 600;
+          cloud.group.position.z = state.position.z - Math.sign(rz || 1) * 2300 + (Math.random() - 0.5) * 600;
+        }
+      }
+      const shadow = cloud.shadow;
+      shadow.position.x = cloud.group.position.x;
+      shadow.position.z = cloud.group.position.z;
+      (shadow.material as THREE.MeshBasicMaterial).opacity = config.cloudShadow;
+      // drape the shadow disc over the terrain beneath it
+      const pos = shadow.geometry.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        const wxV = shadow.position.x + pos.getX(i) * shadow.scale.x;
+        const wzV = shadow.position.z + pos.getZ(i) * shadow.scale.z;
+        pos.setY(
+          i,
+          Math.max(this.terrain.heightAt(wxV, wzV), config.waterLevel) + 1.2,
+        );
+      }
+      pos.needsUpdate = true;
+    }
+  }
+
   private onResize(): void {
     this.camera.aspect = window.innerWidth / window.innerHeight;
     this.camera.updateProjectionMatrix();
     this.gl.setSize(window.innerWidth, window.innerHeight);
   }
+}
+
+/** A lumpy flat-shaded cumulus: a few squashed spheres huddled together. */
+function makeCloud(size: number): THREE.Group {
+  const group = new THREE.Group();
+  const mat = new THREE.MeshLambertMaterial({ color: 0xf3f5f0, flatShading: true });
+  const lumps = 3 + Math.floor(Math.random() * 3);
+  for (let i = 0; i < lumps; i++) {
+    const lump = new THREE.Mesh(new THREE.SphereGeometry(1, 7, 5), mat);
+    const s = size * (0.35 + Math.random() * 0.4);
+    lump.scale.set(s, s * 0.45, s * 0.8);
+    lump.position.set(
+      (Math.random() - 0.5) * size * 1.1,
+      (Math.random() - 0.5) * size * 0.12,
+      (Math.random() - 0.5) * size * 0.5,
+    );
+    group.add(lump);
+  }
+  return group;
+}
+
+/** A soft dark disc, draped over the terrain each frame by animateClouds. */
+function makeCloudShadow(size: number): THREE.Mesh {
+  const geo = new THREE.CircleGeometry(1, 18);
+  geo.rotateX(-Math.PI / 2);
+  const canvas = document.createElement('canvas');
+  canvas.width = 128;
+  canvas.height = 128;
+  const ctx = canvas.getContext('2d')!;
+  const grad = ctx.createRadialGradient(64, 64, 8, 64, 64, 64);
+  grad.addColorStop(0, 'rgba(0,0,0,1)');
+  grad.addColorStop(0.7, 'rgba(0,0,0,0.7)');
+  grad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 128, 128);
+  const tex = new THREE.CanvasTexture(canvas);
+  const mesh = new THREE.Mesh(
+    geo,
+    new THREE.MeshBasicMaterial({
+      color: 0x1c2620,
+      alphaMap: tex,
+      transparent: true,
+      opacity: 0.13,
+      depthWrite: false,
+    }),
+  );
+  mesh.scale.set(size * 1.15, 1, size * 1.15);
+  mesh.frustumCulled = false;
+  return mesh;
+}
+
+/** The old tree: a lone deciduous giant — a place with a name waiting. */
+function makeLoneTree(): THREE.Group {
+  const group = new THREE.Group();
+  const trunk = new THREE.Mesh(
+    new THREE.CylinderGeometry(1.2, 2.0, 16, 6),
+    new THREE.MeshLambertMaterial({ color: 0x6e5a41, flatShading: true }),
+  );
+  trunk.position.y = 8;
+  group.add(trunk);
+  const canopyMat = new THREE.MeshLambertMaterial({ color: 0x4a7247, flatShading: true });
+  const lumps: Array<[number, number, number, number]> = [
+    [0, 21, 0, 10],
+    [-6, 18, 2, 6.5],
+    [5, 19, -3, 7],
+    [2, 24, 3, 5.5],
+  ];
+  for (const [x, y, z, s] of lumps) {
+    const lump = new THREE.Mesh(new THREE.SphereGeometry(1, 8, 6), canopyMat);
+    lump.scale.set(s, s * 0.75, s);
+    lump.position.set(x, y, z);
+    group.add(lump);
+  }
+  return group;
+}
+
+/** The standing stones: a quiet ring out in the dry country. */
+function makeStandingStones(rng: () => number): THREE.Group {
+  const group = new THREE.Group();
+  const mat = new THREE.MeshLambertMaterial({ color: 0x8d8578, flatShading: true });
+  const count = 7;
+  for (let i = 0; i < count; i++) {
+    const angle = (i / count) * Math.PI * 2;
+    const h = 5.5 + rng() * 3;
+    const stone = new THREE.Mesh(new THREE.BoxGeometry(1.9, h, 1.1), mat);
+    stone.position.set(Math.cos(angle) * 11, h / 2 - 0.3, Math.sin(angle) * 11);
+    stone.rotation.set((rng() - 0.5) * 0.12, angle + rng() * 0.5, (rng() - 0.5) * 0.12);
+    group.add(stone);
+  }
+  return group;
 }
 
 /** Wind-ripple line pool for the lakes. */

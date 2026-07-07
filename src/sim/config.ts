@@ -192,6 +192,13 @@ export const config = {
    */
   waterLevel: 14,
 
+  /** Free-drifting clouds beyond the thermal caps. Postcard machinery. */
+  cloudCount: 6,
+
+  /** How dark a cloud's shadow falls on the land (0 = off). The shadows are
+   *  the real prize: the land breathes as they drift over it. */
+  cloudShadow: 0.13,
+
   // ------------------------------------------------ phase 3: face & voice
   /**
    * Where in the day you are, 0..1: golden dawn → noon → golden dusk → back.

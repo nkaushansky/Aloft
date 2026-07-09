@@ -41,6 +41,9 @@ npm run build   # typecheck + production build
 | `M` | mute / unmute the ambient bed |
 | `H` | toggle the debug/tuning readout (flight instruments are always on) |
 
+**On touch devices:** touch anywhere and drag — your touch point becomes a
+floating stick (drag up = nose down). Round buttons replace `R` and `M`.
+
 Every feel constant is a live slider in the lil-gui panel (top right).
 The canonical values live in [`src/sim/config.ts`](src/sim/config.ts) —
 when a tuned value feels right in the panel, write it back there.

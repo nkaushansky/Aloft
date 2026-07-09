@@ -79,7 +79,9 @@ export class Renderer {
     private readonly biomes: Biomes,
   ) {
     this.gl = new THREE.WebGLRenderer({ antialias: true });
-    this.gl.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    // phones render fewer pixels so the framerate stays serene
+    const isTouch = window.matchMedia('(pointer: coarse)').matches;
+    this.gl.setPixelRatio(Math.min(window.devicePixelRatio, isTouch ? 1.5 : 2));
     this.gl.setSize(window.innerWidth, window.innerHeight);
     container.appendChild(this.gl.domElement);
 

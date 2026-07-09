@@ -8,7 +8,9 @@ import { ThermalField, RidgeLift, CompositeLift } from './sim/lift';
 import { Renderer } from './render/renderer';
 import { ChaseCamera } from './render/chaseCamera';
 import { KeyboardInput } from './input/keyboard';
+import { TouchInput } from './input/touch';
 import { DebugHud } from './ui/debugHud';
+import { TouchButtons } from './ui/touchButtons';
 import { FlightHud } from './ui/flightHud';
 import { StickIndicator } from './ui/stickIndicator';
 import { AudioBed } from './audio/audioBed';
@@ -23,6 +25,7 @@ const lift = new CompositeLift([thermals, new RidgeLift(config, terrain)]);
 const renderer = new Renderer(container, terrain, thermals, biomes);
 const chaseCam = new ChaseCamera();
 const input = new KeyboardInput();
+const touch = new TouchInput(container);
 const hud = new DebugHud(container);
 const flightHud = new FlightHud(container);
 const stick = new StickIndicator(container);
@@ -30,11 +33,12 @@ const stick = new StickIndicator(container);
 let current: AircraftState = createLaunchState(config);
 let previous: AircraftState = current;
 
-input.onKey('KeyR', () => {
+const reset = () => {
   current = createLaunchState(config);
   previous = current;
   chaseCam.snap();
-});
+};
+input.onKey('KeyR', reset);
 input.onKey('KeyH', () => hud.toggle());
 
 // Audio wakes on the first gesture (browser autoplay policy); M mutes.
@@ -44,8 +48,11 @@ window.addEventListener('keydown', wake, { once: true });
 window.addEventListener('pointerdown', wake, { once: true });
 input.onKey('KeyM', () => audio.toggleMute());
 
-// --- live tuning panel ----------------------------------------------------
+new TouchButtons(container, reset, () => audio.toggleMute());
+
+// --- live tuning panel (a desktop tool — hidden on touch devices) ---------
 const gui = new GUI({ title: 'Aloft — feel tuning' });
+if (window.matchMedia('(pointer: coarse)').matches) gui.hide();
 const forces = gui.addFolder('forces');
 forces.add(config, 'gravity', 1, 20, 0.1);
 forces.add(config, 'liftPerSpeed', 0.005, 0.08, 0.0005);
@@ -159,7 +166,13 @@ function frame(now: number): void {
   accumulator += frameDt;
   lastTime = now;
 
-  const controls = input.read();
+  // keyboard and touch are peers: sum and clamp, the sim never knows which
+  const kb = input.read();
+  const tc = touch.read();
+  const controls = {
+    pitch: Math.max(-1, Math.min(1, kb.pitch + tc.pitch)),
+    roll: Math.max(-1, Math.min(1, kb.roll + tc.roll)),
+  };
   while (accumulator >= SIM_DT) {
     previous = current;
     current = step(current, controls, SIM_DT, config, terrain, lift);

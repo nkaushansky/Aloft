@@ -15,6 +15,18 @@ const STREAK_BOX = 900; // wind streaks live in a box this wide around the craft
 const RIPPLE_COUNT = 90;
 const MAX_TREES = 1400;
 
+/** One placed plant/rock: position, scale, lean axis + angle, sway phase. */
+interface VegItem {
+  x: number;
+  y: number;
+  z: number;
+  s: number;
+  ax: number;
+  az: number;
+  base: number;
+  phase: number;
+}
+
 /**
  * Phase 2 scene: the air made visible. Rolling vertex-colored terrain from
  * the provider, a dust column and circling birds marking every thermal, and
@@ -37,8 +49,14 @@ export class Renderer {
   private readonly waterMesh: THREE.Mesh;
   private readonly ripples: THREE.LineSegments;
   private readonly ripplePos: Float32Array;
-  private trunks: THREE.InstancedMesh | null = null;
-  private canopies: THREE.InstancedMesh | null = null;
+  private vegSway: Array<{
+    meshes: THREE.InstancedMesh[];
+    items: VegItem[];
+    amp: number;
+    freq: number;
+  }> = [];
+  private vegStatic: THREE.InstancedMesh[] = [];
+  private time = 0;
   private readonly cairn: THREE.Group;
   private readonly landmarksGroup = new THREE.Group();
   readonly landmarks: { tree: { x: number; z: number }; stones: { x: number; z: number } } = {
@@ -184,7 +202,7 @@ export class Renderer {
     this.terrainMesh.geometry.computeVertexNormals();
 
     this.waterMesh.position.y = config.waterLevel;
-    this.rebuildForest();
+    this.rebuildVegetation();
 
     // the cairn crowns the hero hill — one landmark you can steer by
     const cy = this.terrain.heightAt(config.hillX, config.hillZ);
@@ -237,57 +255,201 @@ export class Renderer {
   }
 
   /**
-   * Scatter trees where the forest biome says so — seeded, so the same world
-   * always grows the same woods. Trees lean gently downwind: a living tell.
+   * The living layer: trees, shoreline reeds, bushes, rocks, and flower
+   * meadows — all seeded (the same world always grows the same life), all
+   * instanced. Trees and reeds sway gently in the wind (see
+   * animateVegetation); everything leans downwind, a world-wide tell.
    */
-  private rebuildForest(): void {
-    if (this.trunks) {
-      this.scene.remove(this.trunks);
-      this.scene.remove(this.canopies!);
-      this.trunks.dispose();
-      this.canopies!.dispose();
+  private rebuildVegetation(): void {
+    for (const g of this.vegSway) {
+      for (const mesh of g.meshes) {
+        this.scene.remove(mesh);
+        mesh.dispose();
+      }
     }
+    for (const mesh of this.vegStatic) {
+      this.scene.remove(mesh);
+      mesh.dispose();
+    }
+    this.vegSway = [];
+    this.vegStatic = [];
+
+    const rng = makeRng(config.terrainSeed * 101 + 7);
+    const wl = config.waterLevel;
+    const windDir = (config.windDirDeg * Math.PI) / 180;
+    const ax = -Math.cos(windDir); // lean axis ⊥ to the wind
+    const az = Math.sin(windDir);
+
+    const trees: VegItem[] = [];
+    const treeGreens: THREE.Color[] = [];
+    const reeds: VegItem[] = [];
+    const bushes: VegItem[] = [];
+    const bushGreens: THREE.Color[] = [];
+    const rocks: VegItem[] = [];
+    const rockGreys: THREE.Color[] = [];
+    const flowers: VegItem[] = [];
+    const flowerTints: THREE.Color[] = [];
+
+    const step = 36;
+    for (let gx = -WORLD_SIZE / 2; gx < WORLD_SIZE / 2; gx += step) {
+      for (let gz = -WORLD_SIZE / 2; gz < WORLD_SIZE / 2; gz += step) {
+        const x = gx + (rng() - 0.5) * step * 1.5;
+        const z = gz + (rng() - 0.5) * step * 1.5;
+        const h = this.terrain.heightAt(x, z);
+        if (h < wl - 0.8) continue; // open water
+
+        // reed clumps in the shallows and on the wet shore
+        if (h < wl + 2.2) {
+          if (rng() < 0.45 && reeds.length < 690) {
+            const clump = 3 + Math.floor(rng() * 4);
+            for (let k = 0; k < clump && reeds.length < 696; k++) {
+              const rx = x + (rng() - 0.5) * 7;
+              const rz = z + (rng() - 0.5) * 7;
+              reeds.push({
+                x: rx,
+                y: Math.max(this.terrain.heightAt(rx, rz), wl - 0.4),
+                z: rz,
+                s: 0.7 + rng() * 0.7,
+                ax,
+                az,
+                base: 0.04,
+                phase: rng() * Math.PI * 2,
+              });
+            }
+          }
+          continue;
+        }
+
+        const forest = this.biomes.forestAt(x, z);
+        const dry = this.biomes.drynessAt(x, z);
+
+        if (forest > 0.25 && rng() < forest && trees.length < MAX_TREES) {
+          trees.push({
+            x, y: h, z,
+            s: 0.75 + rng() * 0.8,
+            ax, az,
+            base: 0.05 + 0.06 * rng(),
+            phase: rng() * Math.PI * 2,
+          });
+          treeGreens.push(
+            new THREE.Color().setHSL(0.29 + rng() * 0.05, 0.32 + rng() * 0.12, 0.3 + rng() * 0.09),
+          );
+          continue;
+        }
+        if (forest < 0.6 && rng() < 0.07 && bushes.length < 520) {
+          bushes.push({ x, y: h, z, s: 0.8 + rng() * 1.1, ax, az, base: 0, phase: 0 });
+          bushGreens.push(
+            new THREE.Color().setHSL(0.26 + rng() * 0.06, 0.28 + rng() * 0.1, 0.32 + rng() * 0.08),
+          );
+        }
+        if (rng() < 0.04 && (dry > 0.3 || h < wl + 9) && rocks.length < 240) {
+          rocks.push({ x, y: h, z, s: 0.7 + rng() * 1.9, ax, az, base: 0, phase: rng() * 6 });
+          const g = 0.5 + rng() * 0.14;
+          rockGreys.push(new THREE.Color(g, g * 0.97, g * 0.9));
+        }
+        if (dry < 0.4 && forest < 0.3 && rng() < 0.06 && flowers.length < 450) {
+          const clump = 2 + Math.floor(rng() * 3);
+          for (let k = 0; k < clump && flowers.length < 456; k++) {
+            const fx = x + (rng() - 0.5) * 9;
+            const fz = z + (rng() - 0.5) * 9;
+            flowers.push({
+              x: fx, y: this.terrain.heightAt(fx, fz), z: fz,
+              s: 0.7 + rng() * 0.6, ax, az, base: 0, phase: 0,
+            });
+            flowerTints.push(
+              new THREE.Color(rng() < 0.6 ? 0xe9e2c4 : 0xd9a35e).offsetHSL(0, 0, (rng() - 0.5) * 0.06),
+            );
+          }
+        }
+      }
+    }
+
+    // --- build the instanced meshes ---------------------------------------
+    const fill = (
+      geo: THREE.BufferGeometry,
+      mat: THREE.Material,
+      items: VegItem[],
+      colors?: THREE.Color[],
+    ): THREE.InstancedMesh => {
+      const mesh = new THREE.InstancedMesh(geo, mat, Math.max(items.length, 1));
+      const m = new THREE.Matrix4();
+      const q = new THREE.Quaternion();
+      const axis = new THREE.Vector3();
+      for (let i = 0; i < items.length; i++) {
+        const it = items[i];
+        axis.set(it.ax, 0, it.az).normalize();
+        q.setFromAxisAngle(axis, it.base);
+        if (it.phase && it.base === 0) q.setFromEuler(new THREE.Euler(0, it.phase, 0)); // rocks: random yaw
+        m.compose(new THREE.Vector3(it.x, it.y, it.z), q, new THREE.Vector3(it.s, it.s, it.s));
+        mesh.setMatrixAt(i, m);
+        if (colors) mesh.setColorAt(i, colors[i]);
+      }
+      mesh.count = items.length;
+      mesh.instanceMatrix.needsUpdate = true;
+      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+      this.scene.add(mesh);
+      return mesh;
+    };
+
     const trunkGeo = new THREE.CylinderGeometry(0.35, 0.55, 4, 5);
     trunkGeo.translate(0, 2, 0);
     const canopyGeo = new THREE.ConeGeometry(3.1, 9, 6);
     canopyGeo.translate(0, 8, 0);
     const trunkMat = new THREE.MeshLambertMaterial({ color: 0x6e5a41, flatShading: true });
     const canopyMat = new THREE.MeshLambertMaterial({ flatShading: true });
-    this.trunks = new THREE.InstancedMesh(trunkGeo, trunkMat, MAX_TREES);
-    this.canopies = new THREE.InstancedMesh(canopyGeo, canopyMat, MAX_TREES);
+    const trunks = fill(trunkGeo, trunkMat, trees);
+    const canopies = fill(canopyGeo, canopyMat, trees, treeGreens);
+    this.vegSway.push({ meshes: [trunks, canopies], items: trees, amp: 0.022, freq: 0.8 });
 
-    const rng = makeRng(config.terrainSeed * 101 + 7);
-    const windDir = (config.windDirDeg * Math.PI) / 180;
-    const leanAxis = new THREE.Vector3(-Math.cos(windDir), 0, Math.sin(windDir)); // ⊥ to wind
+    const reedGeo = new THREE.CylinderGeometry(0.05, 0.1, 2.6, 4);
+    reedGeo.translate(0, 1.3, 0);
+    const reedMat = new THREE.MeshLambertMaterial({ color: 0x5d7442, flatShading: true });
+    const reedMesh = fill(reedGeo, reedMat, reeds);
+    this.vegSway.push({ meshes: [reedMesh], items: reeds, amp: 0.11, freq: 1.4 });
+
+    const bushGeo = new THREE.IcosahedronGeometry(1.4, 0);
+    bushGeo.scale(1.2, 0.75, 1.2);
+    bushGeo.translate(0, 0.8, 0);
+    this.vegStatic.push(
+      fill(bushGeo, new THREE.MeshLambertMaterial({ flatShading: true }), bushes, bushGreens),
+    );
+
+    const rockGeo = new THREE.IcosahedronGeometry(1.1, 0);
+    rockGeo.scale(1.3, 0.8, 1);
+    rockGeo.translate(0, 0.5, 0);
+    this.vegStatic.push(
+      fill(rockGeo, new THREE.MeshLambertMaterial({ flatShading: true }), rocks, rockGreys),
+    );
+
+    const flowerGeo = new THREE.OctahedronGeometry(0.34, 0);
+    flowerGeo.translate(0, 0.65, 0);
+    this.vegStatic.push(
+      fill(flowerGeo, new THREE.MeshLambertMaterial({ flatShading: true }), flowers, flowerTints),
+    );
+  }
+
+  /** Trees rock slowly, reeds flutter faster — the wind made visible, always. */
+  private animateVegetation(dt: number): void {
+    this.time += dt;
+    const windF = Math.min(1.6, config.windSpeed / 9);
     const m = new THREE.Matrix4();
     const q = new THREE.Quaternion();
-    const green = new THREE.Color();
-    let n = 0;
-    const step = 42;
-    for (let gx = -WORLD_SIZE / 2; gx < WORLD_SIZE / 2 && n < MAX_TREES; gx += step) {
-      for (let gz = -WORLD_SIZE / 2; gz < WORLD_SIZE / 2 && n < MAX_TREES; gz += step) {
-        const x = gx + (rng() - 0.5) * step * 1.6;
-        const z = gz + (rng() - 0.5) * step * 1.6;
-        const density = this.biomes.forestAt(x, z);
-        if (density < 0.25 || rng() > density) continue;
-        const h = this.terrain.heightAt(x, z);
-        const scale = 0.75 + rng() * 0.8;
-        const lean = 0.05 + 0.06 * rng(); // downwind, gently — the forest shows the wind
-        q.setFromAxisAngle(leanAxis, lean);
-        m.compose(new THREE.Vector3(x, h, z), q, new THREE.Vector3(scale, scale, scale));
-        this.trunks.setMatrixAt(n, m);
-        this.canopies.setMatrixAt(n, m);
-        green.setHSL(0.29 + rng() * 0.05, 0.32 + rng() * 0.12, 0.3 + rng() * 0.09);
-        this.canopies.setColorAt(n, green);
-        n++;
+    const axis = new THREE.Vector3();
+    const p = new THREE.Vector3();
+    const sc = new THREE.Vector3();
+    for (const g of this.vegSway) {
+      for (let i = 0; i < g.items.length; i++) {
+        const it = g.items[i];
+        const angle = it.base + g.amp * windF * Math.sin(this.time * g.freq + it.phase);
+        axis.set(it.ax, 0, it.az).normalize();
+        q.setFromAxisAngle(axis, angle);
+        p.set(it.x, it.y, it.z);
+        sc.set(it.s, it.s, it.s);
+        m.compose(p, q, sc);
+        for (const mesh of g.meshes) mesh.setMatrixAt(i, m);
       }
+      for (const mesh of g.meshes) mesh.instanceMatrix.needsUpdate = true;
     }
-    this.trunks.count = n;
-    this.canopies.count = n;
-    this.trunks.instanceMatrix.needsUpdate = true;
-    this.canopies.instanceMatrix.needsUpdate = true;
-    if (this.canopies.instanceColor) this.canopies.instanceColor.needsUpdate = true;
-    this.scene.add(this.trunks, this.canopies);
   }
 
   /** Rebuild dust + birds when the thermal field changes (count/seed/GUI). */
@@ -401,6 +563,7 @@ export class Renderer {
     this.animateStreaks(dt, state);
     this.animateRipples(dt, state);
     this.animateClouds(dt, state);
+    this.animateVegetation(dt);
 
     this.camera.fov = config.camFov;
     this.camera.updateProjectionMatrix();

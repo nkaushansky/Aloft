@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:sim": "esbuild tests/simcheck.ts --bundle --platform=node --outfile=node_modules/.cache/simcheck.cjs && node node_modules/.cache/simcheck.cjs"
   },
   "dependencies": {
     "lil-gui": "^0.19.2",

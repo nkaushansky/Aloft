@@ -34,7 +34,7 @@ export class Biomes {
     const h = this.terrain.heightAt(x, z);
     if (h < this.cfg.waterLevel + 2 || h > 150) return 0; // no trees in lakes or on stone
     const n = valueNoise(x / 620 + 31.7, z / 620 + 11.3, this.cfg.terrainSeed * 13 + 5);
-    return clamp((n - 0.52) / 0.3, 0, 1);
+    return clamp((n - 0.44) / 0.3, 0, 1);
   }
 
   /** 0..1 dryness — sun-baked country where thermals are born. */

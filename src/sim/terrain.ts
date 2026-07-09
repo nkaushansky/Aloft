@@ -1,5 +1,5 @@
 import type { Config } from './config';
-import { fbm } from './noise';
+import { fbm, valueNoise } from './noise';
 
 /**
  * The terrain abstraction the whole game is built against. The sim (and later
@@ -51,6 +51,10 @@ export class ProceduralTerrain implements TerrainProvider {
     const rolling =
       (fbm(x / c.terrainScale, z / c.terrainScale, c.terrainSeed) * 0.68 + 0.32) *
       c.terrainAmplitude;
+    // macro relief: a much larger swell so the horizon has moods — broad
+    // uplands, wide vales — instead of one endless texture of hills
+    const macro =
+      (valueNoise(x / 2600 + 13.7, z / 2600 + 5.3, c.terrainSeed * 7 + 29) - 0.5) * 2 * 48;
     // hero hill on top
     const dx = x - c.hillX;
     const dz = z - c.hillZ;
@@ -61,6 +65,6 @@ export class ProceduralTerrain implements TerrainProvider {
     const launchDist2 = (x * x + z * z) / (400 * 400);
     const calm = launchDist2 >= 1 ? 1 : launchDist2 * launchDist2 * (3 - 2 * launchDist2);
     const launchPlain = c.waterLevel + 12;
-    return launchPlain + (rolling - launchPlain) * calm + hero;
+    return launchPlain + (rolling + macro - launchPlain) * calm + hero;
   }
 }

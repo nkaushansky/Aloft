@@ -12,8 +12,7 @@ const DUST_PER_THERMAL = 80;
 const BIRDS_PER_THERMAL = 2;
 const STREAK_COUNT = 140;
 const STREAK_BOX = 900; // wind streaks live in a box this wide around the craft
-const RIPPLE_COUNT = 90;
-const MAX_TREES = 1400;
+const MAX_TREES = 3200;
 
 /** One placed plant/rock: position, scale, lean axis + angle, sway phase. */
 interface VegItem {
@@ -47,8 +46,7 @@ export class Renderer {
   private lastSkyT = -1;
   private readonly terrainMesh: THREE.Mesh;
   private readonly waterMesh: THREE.Mesh;
-  private readonly ripples: THREE.LineSegments;
-  private readonly ripplePos: Float32Array;
+  private readonly waterTex: THREE.CanvasTexture;
   private vegSway: Array<{
     meshes: THREE.InstancedMesh[];
     items: VegItem[];
@@ -57,6 +55,7 @@ export class Renderer {
   }> = [];
   private vegStatic: THREE.InstancedMesh[] = [];
   private time = 0;
+  private swayParity = 0;
   private readonly cairn: THREE.Group;
   private readonly landmarksGroup = new THREE.Group();
   readonly landmarks: { tree: { x: number; z: number }; stones: { x: number; z: number } } = {
@@ -124,19 +123,21 @@ export class Renderer {
     );
     this.scene.add(this.terrainMesh);
 
-    // still water — a mirror-calm plane; the wind writes on it with ripples
+    // calm water: a plane whose faint ripple bands drift with the wind —
+    // one smooth scrolling texture, nothing pops or teleports
+    this.waterTex = makeWaterTexture();
     this.waterMesh = new THREE.Mesh(
       new THREE.PlaneGeometry(WORLD_SIZE, WORLD_SIZE),
-      new THREE.MeshLambertMaterial({ color: 0x7fa3ab, transparent: true, opacity: 0.92 }),
+      new THREE.MeshLambertMaterial({
+        color: 0x7fa3ab,
+        map: this.waterTex,
+        transparent: true,
+        opacity: 0.92,
+      }),
     );
     this.waterMesh.geometry.rotateX(-Math.PI / 2);
     this.waterMesh.position.y = config.waterLevel;
     this.scene.add(this.waterMesh);
-
-    const rippleParts = makeWaterRipples();
-    this.ripples = rippleParts.lines;
-    this.ripplePos = rippleParts.positions;
-    this.scene.add(this.ripples);
 
     this.cairn = makeCairn();
     this.scene.add(this.cairn);
@@ -290,7 +291,10 @@ export class Renderer {
     const flowers: VegItem[] = [];
     const flowerTints: THREE.Color[] = [];
 
-    const step = 36;
+    const grasses: VegItem[] = [];
+    const grassGreens: THREE.Color[] = [];
+
+    const step = 30;
     for (let gx = -WORLD_SIZE / 2; gx < WORLD_SIZE / 2; gx += step) {
       for (let gz = -WORLD_SIZE / 2; gz < WORLD_SIZE / 2; gz += step) {
         const x = gx + (rng() - 0.5) * step * 1.5;
@@ -300,11 +304,11 @@ export class Renderer {
 
         // reed clumps in the shallows and on the wet shore
         if (h < wl + 2.2) {
-          if (rng() < 0.45 && reeds.length < 690) {
-            const clump = 3 + Math.floor(rng() * 4);
-            for (let k = 0; k < clump && reeds.length < 696; k++) {
-              const rx = x + (rng() - 0.5) * 7;
-              const rz = z + (rng() - 0.5) * 7;
+          if (rng() < 0.55 && reeds.length < 1190) {
+            const clump = 3 + Math.floor(rng() * 5);
+            for (let k = 0; k < clump && reeds.length < 1196; k++) {
+              const rx = x + (rng() - 0.5) * 8;
+              const rz = z + (rng() - 0.5) * 8;
               reeds.push({
                 x: rx,
                 y: Math.max(this.terrain.heightAt(rx, rz), wl - 0.4),
@@ -323,7 +327,7 @@ export class Renderer {
         const forest = this.biomes.forestAt(x, z);
         const dry = this.biomes.drynessAt(x, z);
 
-        if (forest > 0.25 && rng() < forest && trees.length < MAX_TREES) {
+        if (forest > 0.2 && rng() < forest * 1.25 && trees.length < MAX_TREES) {
           trees.push({
             x, y: h, z,
             s: 0.75 + rng() * 0.8,
@@ -336,22 +340,22 @@ export class Renderer {
           );
           continue;
         }
-        if (forest < 0.6 && rng() < 0.07 && bushes.length < 520) {
+        if (forest < 0.6 && rng() < 0.16 && bushes.length < 1200) {
           bushes.push({ x, y: h, z, s: 0.8 + rng() * 1.1, ax, az, base: 0, phase: 0 });
           bushGreens.push(
             new THREE.Color().setHSL(0.26 + rng() * 0.06, 0.28 + rng() * 0.1, 0.32 + rng() * 0.08),
           );
         }
-        if (rng() < 0.04 && (dry > 0.3 || h < wl + 9) && rocks.length < 240) {
+        if (rng() < 0.09 && (dry > 0.25 || h < wl + 9) && rocks.length < 540) {
           rocks.push({ x, y: h, z, s: 0.7 + rng() * 1.9, ax, az, base: 0, phase: rng() * 6 });
           const g = 0.5 + rng() * 0.14;
           rockGreys.push(new THREE.Color(g, g * 0.97, g * 0.9));
         }
-        if (dry < 0.4 && forest < 0.3 && rng() < 0.06 && flowers.length < 450) {
-          const clump = 2 + Math.floor(rng() * 3);
-          for (let k = 0; k < clump && flowers.length < 456; k++) {
-            const fx = x + (rng() - 0.5) * 9;
-            const fz = z + (rng() - 0.5) * 9;
+        if (dry < 0.4 && forest < 0.3 && rng() < 0.13 && flowers.length < 1050) {
+          const clump = 2 + Math.floor(rng() * 4);
+          for (let k = 0; k < clump && flowers.length < 1056; k++) {
+            const fx = x + (rng() - 0.5) * 10;
+            const fz = z + (rng() - 0.5) * 10;
             flowers.push({
               x: fx, y: this.terrain.heightAt(fx, fz), z: fz,
               s: 0.7 + rng() * 0.6, ax, az, base: 0, phase: 0,
@@ -360,6 +364,17 @@ export class Renderer {
               new THREE.Color(rng() < 0.6 ? 0xe9e2c4 : 0xd9a35e).offsetHSL(0, 0, (rng() - 0.5) * 0.06),
             );
           }
+        }
+        // grass tufts everywhere the meadow runs — ground texture at speed
+        if (forest < 0.5 && rng() < 0.28 && grasses.length < 2400) {
+          grasses.push({
+            x, y: h, z,
+            s: 0.7 + rng() * 0.9,
+            ax, az, base: 0.05, phase: 0,
+          });
+          grassGreens.push(
+            new THREE.Color().setHSL(0.25 + rng() * 0.05, 0.3 + rng() * 0.08, 0.34 + rng() * 0.07),
+          );
         }
       }
     }
@@ -426,11 +441,20 @@ export class Renderer {
     this.vegStatic.push(
       fill(flowerGeo, new THREE.MeshLambertMaterial({ flatShading: true }), flowers, flowerTints),
     );
+
+    const grassGeo = new THREE.ConeGeometry(0.55, 1.3, 4);
+    grassGeo.translate(0, 0.6, 0);
+    this.vegStatic.push(
+      fill(grassGeo, new THREE.MeshLambertMaterial({ flatShading: true }), grasses, grassGreens),
+    );
   }
 
-  /** Trees rock slowly, reeds flutter faster — the wind made visible, always. */
+  /** Trees rock slowly, reeds flutter faster — the wind made visible, always.
+   *  Each frame updates half the instances (alternating), so doubling the
+   *  forest doesn't double the per-frame cost; at 60Hz the eye can't tell. */
   private animateVegetation(dt: number): void {
     this.time += dt;
+    this.swayParity = 1 - this.swayParity;
     const windF = Math.min(1.6, config.windSpeed / 9);
     const m = new THREE.Matrix4();
     const q = new THREE.Quaternion();
@@ -438,7 +462,7 @@ export class Renderer {
     const p = new THREE.Vector3();
     const sc = new THREE.Vector3();
     for (const g of this.vegSway) {
-      for (let i = 0; i < g.items.length; i++) {
+      for (let i = this.swayParity; i < g.items.length; i += 2) {
         const it = g.items[i];
         const angle = it.base + g.amp * windF * Math.sin(this.time * g.freq + it.phase);
         axis.set(it.ax, 0, it.az).normalize();
@@ -561,7 +585,7 @@ export class Renderer {
     this.animateDust(dt);
     this.animateBirds(dt);
     this.animateStreaks(dt, state);
-    this.animateRipples(dt, state);
+    this.animateWater(dt);
     this.animateClouds(dt, state);
     this.animateVegetation(dt);
 
@@ -670,48 +694,13 @@ export class Renderer {
     (this.scene.fog as THREE.Fog).color.set(mix(0xd7ddd2, 0xe4c9a4));
   }
 
-  /** Wind-aligned dashes drifting across the lakes — the water shows the wind. */
-  private animateRipples(dt: number, state: AircraftState): void {
+  /** The lakes' ripple bands drift steadily downwind — smooth, never popping. */
+  private animateWater(dt: number): void {
     const dir = (config.windDirDeg * Math.PI) / 180;
-    const wx = -Math.sin(dir) * config.windSpeed * 0.45;
-    const wz = -Math.cos(dir) * config.windSpeed * 0.45;
-    const len = Math.max(3, config.windSpeed * 0.9);
-    const y = config.waterLevel + 0.25;
-    const half = 1100;
-    const p = this.ripplePos;
-    for (let i = 0; i < RIPPLE_COUNT; i++) {
-      let x = p[i * 6] + wx * dt;
-      let z = p[i * 6 + 2] + wz * dt;
-      const rx = x - state.position.x;
-      const rz = z - state.position.z;
-      const overLand = this.terrain.heightAt(x, z) > config.waterLevel - 0.5;
-      if (Math.abs(rx) > half || Math.abs(rz) > half || overLand) {
-        // find a watery spot near the craft; hide the ripple if none found
-        let placed = false;
-        for (let tries = 0; tries < 6; tries++) {
-          const cx = state.position.x + (Math.random() - 0.5) * half * 2;
-          const cz = state.position.z + (Math.random() - 0.5) * half * 2;
-          if (this.terrain.heightAt(cx, cz) < config.waterLevel - 1) {
-            x = cx;
-            z = cz;
-            placed = true;
-            break;
-          }
-        }
-        if (!placed) {
-          p[i * 6 + 1] = -50; // parked out of sight until water comes near
-          p[i * 6 + 4] = -50;
-          continue;
-        }
-      }
-      p[i * 6] = x;
-      p[i * 6 + 1] = y;
-      p[i * 6 + 2] = z;
-      p[i * 6 + 3] = x + (wx / (config.windSpeed * 0.45 || 1)) * len;
-      p[i * 6 + 4] = y;
-      p[i * 6 + 5] = z + (wz / (config.windSpeed * 0.45 || 1)) * len;
-    }
-    this.ripples.geometry.attributes.position.needsUpdate = true;
+    const patch = WORLD_SIZE / this.waterTex.repeat.x; // meters per texture tile
+    // plane UVs: u tracks +x, v tracks -z
+    this.waterTex.offset.x -= (-Math.sin(dir) * config.windSpeed * 0.5 * dt) / patch;
+    this.waterTex.offset.y += (-Math.cos(dir) * config.windSpeed * 0.5 * dt) / patch;
   }
 
   /** Drift the free clouds downwind; drape every cloud's shadow on the land. */
@@ -846,18 +835,33 @@ function makeStandingStones(rng: () => number): THREE.Group {
   return group;
 }
 
-/** Wind-ripple line pool for the lakes. */
-function makeWaterRipples(): { lines: THREE.LineSegments; positions: Float32Array } {
-  const positions = new Float32Array(RIPPLE_COUNT * 6);
-  positions.fill(-50); // parked below the world until placed on water
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  const lines = new THREE.LineSegments(
-    geo,
-    new THREE.LineBasicMaterial({ color: 0xe8f2ee, transparent: true, opacity: 0.45 }),
-  );
-  lines.frustumCulled = false;
-  return { lines, positions };
+/** Faint irregular ripple bands, tiled across the water and scrolled by wind. */
+function makeWaterTexture(): THREE.CanvasTexture {
+  const size = 256;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d')!;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, size, size);
+  // soft light bands with a gentle wobble — reads as wind-brushed water
+  for (let band = 0; band < 7; band++) {
+    const y0 = (band / 7) * size + Math.random() * 14;
+    ctx.beginPath();
+    for (let x = 0; x <= size; x += 8) {
+      const y = y0 + Math.sin((x / size) * Math.PI * 4 + band * 1.7) * 5;
+      if (x === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.lineWidth = 2.2;
+    ctx.strokeStyle = 'rgba(240,247,245,0.85)';
+    ctx.stroke();
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(WORLD_SIZE / 90, WORLD_SIZE / 90); // one tile ≈ 90m of water
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
 }
 
 /** A stone cairn for the hero hill's summit — the world's first name-able landmark. */

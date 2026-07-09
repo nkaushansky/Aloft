@@ -100,6 +100,7 @@ world.add(config, 'hillZ', -2500, 0, 25).onFinishChange(rebuildWorld);
 const air = gui.addFolder('air');
 air.add(config, 'windSpeed', 0, 25, 0.5);
 air.add(config, 'windDirDeg', 0, 360, 5);
+air.add(config, 'windCarry', 0, 1, 0.05);
 air.add(config, 'thermalCount', 0, 16, 1);
 air.add(config, 'thermalSeed', 1, 99, 1);
 air.add(config, 'thermalStrength', 0, 12, 0.25);

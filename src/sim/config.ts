@@ -155,6 +155,14 @@ export const config = {
    *  by default the wind is at your back and strikes the hill's near face. */
   windDirDeg: 0,
 
+  /**
+   * How much the wind carries the craft (0..1). Airspeed is speed *through*
+   * the air — but the air itself moves. At 0.65, a 9 m/s tailwind adds
+   * ~6 m/s of ground speed: flying downwind is visibly faster, pushing
+   * upwind is honest work. The streaks aren't a compass, they're a current.
+   */
+  windCarry: 0.65,
+
   /** The thermal field: how many columns dot the land and the average
    *  personality they vary around (±~35% each, per seed). Strength 7 vs a
    *  ~1.4 m/s glide sink means an average core lifts you at ~5.5 m/s — a

@@ -91,11 +91,16 @@ export function step(
   s.lift = liftSource.liftAt(s.position.x, s.position.y, s.position.z);
 
   // --- integrate position -------------------------------------------------
+  // The craft moves through the air; the air moves over the ground. Wind
+  // advection means downwind legs are fast and upwind legs are honest work.
+  const wdir = (cfg.windDirDeg * Math.PI) / 180;
+  const windX = -Math.sin(wdir) * cfg.windSpeed * cfg.windCarry;
+  const windZ = -Math.cos(wdir) * cfg.windSpeed * cfg.windCarry;
   const fwd = forwardOf(s);
   s.climbRate = fwd.y * s.airspeed - s.settle + s.lift;
-  s.position.x += fwd.x * s.airspeed * dt;
+  s.position.x += (fwd.x * s.airspeed + windX) * dt;
   s.position.y += s.climbRate * dt;
-  s.position.z += fwd.z * s.airspeed * dt;
+  s.position.z += (fwd.z * s.airspeed + windZ) * dt;
 
   // --- ground contact: simple reset (gentle landings arrive with Q6/P5) ---
   // Water counts as ground: lakes sit above their lakebeds.

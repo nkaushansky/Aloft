@@ -5,17 +5,21 @@ import type { QualitySettings, QualityTier } from '../sim/types';
  * GPU, and the honest way to do that is to decide up front what gets cut in
  * what order rather than scaling one master slider.
  *
- * The ordering of the cuts is deliberate: draw distance and ribbon count go
- * first because you barely notice them, post-processing goes last because it
- * is most of what makes the frame look expensive.
+ * The ordering of the cuts was originally "draw distance and ribbon count go
+ * first, post-processing last". Playtesting on a phone proved that exactly
+ * backwards. Wind ribbons are the one thing that makes the atmosphere legible,
+ * and a short draw distance makes the world feel like it is being built around
+ * you as you fly. Both now hold up across the tiers; resolution per chunk and
+ * pixel ratio give way instead, because nobody has ever noticed a terrain
+ * triangle being slightly larger.
  */
 const TIERS: Record<QualityTier, QualitySettings> = {
   low: {
     tier: 'low',
     pixelRatioCap: 1.25,
-    terrainRings: 3,
-    chunkResolution: 48,
-    windRibbons: 200,
+    terrainRings: 5,
+    chunkResolution: 40,
+    windRibbons: 520,
     cloudPuffs: 4,
     scatterDensity: 0.3,
     bloom: false,
@@ -27,9 +31,9 @@ const TIERS: Record<QualityTier, QualitySettings> = {
   medium: {
     tier: 'medium',
     pixelRatioCap: 1.5,
-    terrainRings: 4,
-    chunkResolution: 64,
-    windRibbons: 420,
+    terrainRings: 6,
+    chunkResolution: 56,
+    windRibbons: 850,
     cloudPuffs: 6,
     scatterDensity: 0.6,
     bloom: true,
@@ -41,9 +45,9 @@ const TIERS: Record<QualityTier, QualitySettings> = {
   high: {
     tier: 'high',
     pixelRatioCap: 1.85,
-    terrainRings: 5,
-    chunkResolution: 96,
-    windRibbons: 750,
+    terrainRings: 7,
+    chunkResolution: 88,
+    windRibbons: 1150,
     cloudPuffs: 8,
     scatterDensity: 1,
     bloom: true,
@@ -55,9 +59,9 @@ const TIERS: Record<QualityTier, QualitySettings> = {
   ultra: {
     tier: 'ultra',
     pixelRatioCap: 2,
-    terrainRings: 6,
-    chunkResolution: 128,
-    windRibbons: 1300,
+    terrainRings: 8,
+    chunkResolution: 120,
+    windRibbons: 1600,
     cloudPuffs: 10,
     scatterDensity: 1.35,
     bloom: true,

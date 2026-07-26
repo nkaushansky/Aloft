@@ -43,8 +43,21 @@ export type CameraMode = 'chase' | 'orbit' | 'landing' | 'launch';
 const VEL_TRUST_LO = 0.5;
 const VEL_TRUST_HI = 6;
 
-/** How far the framing is pulled back toward the nose from the track. */
-const NOSE_BIAS = 0.22;
+/**
+ * How far the framing is pulled back toward the nose from the ground track.
+ *
+ * Raised from 0.22 after playtesting. Following the track was physically
+ * honest — a bird in a crosswind really does travel sideways to its nose —
+ * but it meant the camera sat up to twenty degrees off the bird's body and
+ * that angle drifted continuously as you turned relative to the wind. Players
+ * could not tell why the view kept moving, which is a worse failure than
+ * hiding the crab.
+ *
+ * At 0.82 the camera sits behind the BIRD. The crab is still completely
+ * visible, just read the correct way round: the bird points one way, the world
+ * slides the other. That is what crabbing actually looks like from behind.
+ */
+const NOSE_BIAS = 0.82;
 
 /** Rise-over-run of the flight path is clamped here before it moves anything. */
 const SLOPE_LIMIT = 1.2;

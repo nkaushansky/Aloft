@@ -281,6 +281,32 @@ export class GamepadInput implements InputReader {
   }
 }
 
+// ================================================================ buttons
+
+/**
+ * On-screen wing controls.
+ *
+ * The floating stick handles pitch and roll beautifully on a phone, but the
+ * skill layer — tuck and spread — was originally only reachable by putting a
+ * second finger on the correct half of the screen. Nobody discovers that, so
+ * on touch devices half the game did not exist. These are held buttons: press
+ * and hold to sweep the wings, exactly like holding Shift or Space.
+ */
+export class ButtonInput implements InputReader {
+  tuck = 0;
+  spread = 0;
+
+  read(out: FlightInput, _dt: number): void {
+    out.tuck += this.tuck;
+    out.spread += this.spread;
+  }
+
+  dispose(): void {
+    this.tuck = 0;
+    this.spread = 0;
+  }
+}
+
 // ================================================================ manager
 
 /**
@@ -298,13 +324,14 @@ export class InputManager {
   readonly touch: TouchInput;
   readonly gamepad: GamepadInput;
   readonly pointer: PointerInput;
+  readonly buttons = new ButtonInput();
 
   constructor(target: HTMLElement, mouseFlying: () => boolean) {
     this.keyboard = new KeyboardInput();
     this.touch = new TouchInput(target);
     this.gamepad = new GamepadInput();
     this.pointer = new PointerInput(mouseFlying);
-    this.readers.push(this.keyboard, this.touch, this.gamepad, this.pointer);
+    this.readers.push(this.keyboard, this.touch, this.gamepad, this.pointer, this.buttons);
   }
 
   update(dt: number): FlightInput {

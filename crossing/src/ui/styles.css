@@ -26,8 +26,11 @@
   --sky-cool: 120 178 216;     /* the shadow/ambient colour — sink, cool UI */
 
   --ink: rgb(var(--sky-ink));
-  --dim: rgba(var(--sky-dim) / 0.82);
-  --faint: rgba(var(--sky-dim) / 0.42);
+  /* Raised from 0.82 / 0.42. The JS now pins luminance on the --sky-* triplets
+     themselves, so these no longer need to fade text to reach a tint — and
+     fading them was most of why the HUD was hard to read over a bright sky. */
+  --dim: rgba(var(--sky-dim) / 0.95);
+  --faint: rgba(var(--sky-dim) / 0.7);
   --glow: rgb(var(--sky-glow));
   --cool: rgb(var(--sky-cool));
   --panel: rgba(var(--sky-deep) / 0.34);
@@ -286,6 +289,38 @@ html, body {
 #hud {
   font-family: var(--mono);
   transition: opacity 0.7s var(--ease-soft);
+  /* Every instrument sits over open sky or sunlit ground, both of which can be
+     near-white. A soft shadow costs nothing and guarantees the glyph edge
+     always has something to sit against. */
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.8),
+    0 0 10px rgba(0, 0, 0, 0.65),
+    0 0 30px rgba(0, 0, 0, 0.45);
+}
+
+/* Corner scrims: a barely-there darkening under each cluster of readouts, so
+   the numbers keep their contrast even against a blown-out horizon. Pointer
+   events stay off — these are paint, not surfaces. */
+#hud::before,
+#hud::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 190px;
+  pointer-events: none;
+}
+/* Fixed near-black, NOT --sky-deep. That variable is gamma-encoded for use as
+   a panel tint, so a near-black sky came out of it as a mid blue-grey and the
+   scrims did almost nothing over a bright horizon. A scrim's job is contrast;
+   it does not get to be tinted. */
+#hud::before {
+  top: 0;
+  background: linear-gradient(to bottom, rgba(6, 10, 18, 0.55), rgba(6, 10, 18, 0.16) 55%, transparent);
+}
+#hud::after {
+  bottom: 0;
+  background: linear-gradient(to top, rgba(6, 10, 18, 0.62), rgba(6, 10, 18, 0.2) 55%, transparent);
 }
 #hud.hidden { opacity: 0; }
 #hud.dim { opacity: 0.34; }
@@ -297,10 +332,10 @@ html, body {
 .hud-br { bottom: var(--gutter); right: var(--gutter); justify-items: end; text-align: right; }
 
 .readout-label {
-  font-size: 9.5px;
-  letter-spacing: 0.26em;
+  font-size: 10.5px;
+  letter-spacing: 0.24em;
   text-transform: uppercase;
-  color: var(--faint);
+  color: var(--dim);
 }
 .readout-value {
   font-size: clamp(26px, 3.4vw, 40px);
@@ -317,8 +352,8 @@ html, body {
   font-weight: 400;
 }
 .readout-sub {
-  font-size: 10.5px;
-  letter-spacing: 0.13em;
+  font-size: 11.5px;
+  letter-spacing: 0.12em;
   color: var(--dim);
 }
 
@@ -380,8 +415,9 @@ html, body {
   position: absolute;
   left: 20px;
   bottom: -22px;
-  font-size: 9.5px;
-  letter-spacing: 0.24em;
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--vario-color, var(--dim));
   white-space: nowrap;
@@ -452,14 +488,20 @@ html, body {
   height: 12px;
   background: var(--hairline);
 }
+.wing-caption {
+  font-size: 10px;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
 .wing-labels {
   display: flex;
   justify-content: space-between;
   width: 148px;
-  font-size: 9px;
+  font-size: 10px;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: var(--faint);
+  color: var(--dim);
 }
 .wing-labels span.on { color: rgb(var(--sky-glow)); }
 
@@ -488,6 +530,7 @@ html, body {
 }
 .banner-line {
   font-family: var(--serif);
+  text-shadow: 0 2px 22px rgba(0, 0, 0, 0.85), 0 0 60px rgba(0, 0, 0, 0.6);
   font-style: italic;
   font-weight: 300;
   font-size: clamp(19px, 2.6vw, 27px);
@@ -532,9 +575,9 @@ html, body {
   position: absolute;
   top: 0;
   transform: translateX(-50%);
-  font-size: 9.5px;
+  font-size: 10.5px;
   letter-spacing: 0.14em;
-  color: var(--faint);
+  color: var(--dim);
   text-align: center;
 }
 .compass-tick.card { color: rgba(var(--sky-ink) / 0.8); font-size: 10.5px; }
@@ -716,6 +759,47 @@ html, body {
   border: 1px solid rgba(var(--sky-ink) / 0.4);
 }
 
+/* The wing pads. Only shown on touch devices — see main.ts. Placed high
+   enough that a thumb reaching one does not also drag the flight stick. */
+.wing-pads {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--gutter) + 78px);
+  display: flex;
+  justify-content: space-between;
+  padding: 0 var(--gutter);
+  pointer-events: none;
+}
+.wing-pad {
+  pointer-events: auto;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: none;
+  user-select: none;
+  display: grid;
+  gap: 2px;
+  justify-items: center;
+  min-width: 104px;
+  padding: 14px 18px;
+  border: 1px solid var(--hairline);
+  border-radius: 3px;
+  background: rgba(var(--sky-deep) / 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: rgb(var(--sky-ink));
+  font-family: var(--mono);
+  transition: background 0.14s, border-color 0.14s, transform 0.14s;
+}
+.wing-pad b { font-size: 12.5px; font-weight: 500; letter-spacing: 0.24em; }
+.wing-pad i { font-style: normal; font-size: 9.5px; letter-spacing: 0.14em; color: var(--faint); }
+.wing-pad.on {
+  background: rgba(var(--sky-glow) / 0.85);
+  border-color: rgb(var(--sky-glow));
+  color: rgb(var(--sky-deep));
+  transform: translateY(1px);
+}
+.wing-pad.on i { color: rgba(var(--sky-deep) / 0.75); }
+
 .touch-btns { position: absolute; right: var(--gutter); bottom: calc(var(--gutter) + 74px); display: grid; gap: 9px; }
 .touch-btn {
   width: 46px;
@@ -780,6 +864,14 @@ html, body {
 
 @media (max-width: 700px) {
   :root { --gutter: 14px; }
+  .wing-pad { min-width: 92px; padding: 12px 14px; }
+  /* The wing readout sits between the two corner readouts on a narrow phone
+     and its labels ran straight through the altitude line. The pads already
+     say TUCK and SPREAD in letters twice the size, so the duplicate legend
+     goes and the track tucks up out of the way. */
+  .wing { bottom: calc(var(--gutter) + 96px); }
+  .wing-labels { display: none; }
+  .wing-track { width: 108px; }
   .vario { height: 34vh; width: 38px; }
   .compass { width: 68vw; }
   .readout-value { font-size: 25px; }

@@ -307,8 +307,21 @@ export const config = {
 
   /** Maximum companions that can fly with you at once. */
   flockMax: 64,
-  /** Metres of climb needed to earn one new companion. */
-  climbPerCompanion: 130,
+  /**
+   * Metres of climb needed to earn one new companion. Lowered from 130: in
+   * playtesting a first flight often never climbed at all, so the flock — the
+   * score, the wind-tell and the emotional arc of the whole run — simply never
+   * appeared and the player had no idea it existed.
+   */
+  climbPerCompanion: 85,
+
+  /**
+   * Companions already with you at launch. The flock is supposed to teach you
+   * that other birds find lift before you do, and it cannot teach anything if
+   * you have to already be flying well to meet it. Three is enough to notice
+   * and follow, and far short of the crowd a good day earns.
+   */
+  flockAtLaunch: 3,
   /** How far out companions spread (m). */
   flockRadius: 46,
   /** Seconds for a joining bird to fade in. */

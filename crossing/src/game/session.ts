@@ -57,6 +57,7 @@ export class Session {
   private lastDayPhase: SkyState['phase'] = 'dawn';
   private seenKinds = new Set<AirKind>();
   private noteCooldown = 0;
+  private lastAnnounced: AirKind = AirKind.Still;
 
   constructor(
     private readonly cfg: Config,
@@ -119,6 +120,7 @@ export class Session {
     this.launchZ = bird.position.z;
     this.seenKinds.clear();
     this.noteCooldown = 0;
+    this.lastAnnounced = AirKind.Still;
     this.setPhase('launching');
   }
 
@@ -167,18 +169,25 @@ export class Session {
     if (bird.airKind === AirKind.Wave && bird.airIntensity > 0.25) s.touchedWave = true;
     if (sky.phase === 'night') s.reachedNight = true;
 
-    // --- first-time notes --------------------------------------------------
+    // --- naming the air ----------------------------------------------------
+    // Originally each kind of air was named once per run and never again, on
+    // the theory that repeating yourself is nagging. Playtesting killed that:
+    // a player who hits rough air ten minutes later has no idea what happened
+    // or what they could have done about it, and the one thing the game most
+    // needs to teach is that the air has KINDS. So it announces on every
+    // entry now — the full teaching line the first time, just the name after.
     this.noteCooldown = Math.max(0, this.noteCooldown - dt);
-    if (
-      this.noteCooldown === 0 &&
-      bird.airIntensity > 0.35 &&
-      bird.airKind !== AirKind.Still &&
-      bird.airKind !== AirKind.Sink &&
-      !this.seenKinds.has(bird.airKind)
-    ) {
+    const notable =
+      bird.airIntensity > 0.3 && bird.airKind !== AirKind.Still && bird.airKind !== AirKind.Sink;
+    if (notable && bird.airKind !== this.lastAnnounced && this.noteCooldown === 0) {
+      const first = !this.seenKinds.has(bird.airKind);
       this.seenKinds.add(bird.airKind);
-      this.noteCooldown = 6;
-      this.events.onNote?.(FIRST_TIME_NOTES[bird.airKind]);
+      this.lastAnnounced = bird.airKind;
+      this.noteCooldown = first ? 7 : 4;
+      this.events.onNote?.(first ? FIRST_TIME_NOTES[bird.airKind] : SHORT_NOTES[bird.airKind]);
+    } else if (!notable && bird.airIntensity < 0.12) {
+      // Leaving the feature re-arms it, so re-entering says so again.
+      this.lastAnnounced = AirKind.Still;
     }
 
     // --- the day turning ---------------------------------------------------
@@ -283,6 +292,16 @@ const SCRATCH_TERRAIN = { height: 0, nx: 0, ny: 1, nz: 0, slope: 0 };
  * The first time the player meets each kind of air, the HUD names it once and
  * never again. Naming a thing is most of learning to find it.
  */
+const SHORT_NOTES: Record<AirKind, string> = {
+  [AirKind.Still]: '',
+  [AirKind.Thermal]: 'thermal',
+  [AirKind.Ridge]: 'ridge lift',
+  [AirKind.Wave]: 'wave',
+  [AirKind.Rotor]: 'rotor — rough',
+  [AirKind.Convergence]: 'convergence',
+  [AirKind.Sink]: 'sink',
+};
+
 const FIRST_TIME_NOTES: Record<AirKind, string> = {
   [AirKind.Still]: '',
   [AirKind.Thermal]: 'thermal — circle to stay in it',

@@ -184,7 +184,11 @@ export class Hud {
     this.wingSpread = el('span', '');
     this.wingSpread.textContent = 'spread';
     labels.append(this.wingTuck, mid, this.wingSpread);
-    wing.append(track, labels);
+    // Say what it is. Players read an unlabelled slider as something to drag;
+    // this one is an instrument reporting the shape of the wings.
+    const wingCap = el('div', 'wing-caption');
+    wingCap.textContent = 'wing';
+    wing.append(wingCap, track, labels);
     parent.appendChild(wing);
 
     // ---------------------------------------------------------- compass
@@ -246,13 +250,18 @@ export class Hud {
    */
   tint(sky: SkyState): void {
     const s = document.documentElement.style;
-    // Text must stay legible at every hour, so the ink is the horizon colour
-    // pushed hard toward white rather than the horizon colour itself.
-    setVar(s, '--sky-ink', mixToward(sky.skyHorizon, 1, 0.62), 'ink');
-    setVar(s, '--sky-dim', mixToward(sky.skyHorizon, 1, 0.3), 'dim');
-    setVar(s, '--sky-glow', normalizeBright(sky.sunColor), 'glow');
-    setVar(s, '--sky-deep', mixToward(sky.skyZenith, 0, 0.35), 'deep');
-    setVar(s, '--sky-cool', mixToward(sky.ambient, 1, 0.28), 'cool');
+    // The interface takes its hue from the sky, but NEVER its contrast.
+    //
+    // The first version derived ink straight from the horizon colour, which
+    // meant that at golden hour pale text landed on a pale sky and the whole
+    // HUD became unreadable. Hue can come from the atmosphere; luminance is
+    // held to a floor here so every label clears its background at every hour
+    // of the day. Tint is decoration, legibility is not.
+    setVar(s, '--sky-ink', tintAtLuma(sky.skyHorizon, 0.94, 0.22), 'ink');
+    setVar(s, '--sky-dim', tintAtLuma(sky.skyHorizon, 0.8, 0.3), 'dim');
+    setVar(s, '--sky-glow', tintAtLuma(sky.sunColor, 0.86, 0.55), 'glow');
+    setVar(s, '--sky-deep', mixToward(sky.skyZenith, 0, 0.62), 'deep');
+    setVar(s, '--sky-cool', tintAtLuma(sky.ambient, 0.72, 0.35), 'cool');
   }
 
   // -------------------------------------------------------------- update
@@ -426,14 +435,30 @@ function mixToward(c: Vec3, target: number, amount: number): string {
 }
 
 /**
- * The sun's hue at a usable brightness. Sun colour is HDR and at noon would
- * come out pure white, which makes a bad accent — so normalise to the
- * brightest channel and keep the hue.
+ * Take a colour's HUE from the atmosphere but pin its LUMINANCE.
+ *
+ * This is the whole trick that keeps the HUD readable across a day that runs
+ * from pre-dawn indigo to a white noon to a burnt-orange sunset. `targetLuma`
+ * is where the text has to sit in display space; `saturation` is how much of
+ * the sky's character it is allowed to keep on the way there. Returns an
+ * "R G B" triplet for a CSS custom property.
  */
-function normalizeBright(c: Vec3): string {
+function tintAtLuma(c: Vec3, targetLuma: number, saturation: number): string {
+  // Normalise to unit brightness so the hue survives HDR values, then pull
+  // most of the way to neutral, then set the level.
   const m = Math.max(c.x, c.y, c.z, 1e-4);
-  const k = 0.98 / m;
-  return `${to255(c.x * k)} ${to255(c.y * k)} ${to255(c.z * k)}`;
+  const r = c.x / m;
+  const g = c.y / m;
+  const b = c.z / m;
+  const grey = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  const f = (v: number): number => {
+    const desat = grey + (v - grey) * saturation;
+    // Divide out the colour's own luma so the result lands ON target rather
+    // than near it — otherwise a dark sky still yields dark text.
+    return clamp01((desat / Math.max(grey, 1e-4)) * targetLuma);
+  };
+  // Already in display space: these are UI colours, not scene radiance.
+  return `${Math.round(f(r) * 255)} ${Math.round(f(g) * 255)} ${Math.round(f(b) * 255)}`;
 }
 
 function setVar(style: CSSStyleDeclaration, name: string, value: string, cacheKey: string): void {

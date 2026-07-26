@@ -20,6 +20,7 @@ import type { QualityTier } from './sim/types';
 import { AudioEngine } from './audio';
 import { Hud } from './ui/hud';
 import { TitleScreen, SummaryScreen } from './ui/screens';
+import { TouchControls } from './ui/touchControls';
 
 /**
  * Wiring, and nothing else. Every decision that matters lives in sim/ or in
@@ -103,6 +104,14 @@ summaryLayer.style.display = 'none';
 document.body.appendChild(summaryLayer);
 
 const hud = new Hud(hudLayer, config);
+
+// The wing pads only exist where there is no Shift key to hold.
+const isTouch = matchMedia('(pointer: coarse)').matches;
+const touchLayer = document.createElement('div');
+touchLayer.className = 'layer';
+document.body.appendChild(touchLayer);
+const touchControls = new TouchControls(touchLayer, input.buttons);
+touchControls.setVisible(false);
 const title = new TitleScreen(titleLayer);
 const summary = new SummaryScreen(summaryLayer);
 
@@ -128,6 +137,7 @@ const session = new Session(config, terrain, {
     summaryLayer.style.display = '';
     summary.show(stats, session.verdict(), session.runTitle(), session.logbook.all());
     hud.setVisible(false);
+    touchControls.setVisible(false);
   },
 });
 
@@ -161,12 +171,16 @@ function startRun(mode: RunMode): void {
   flock.reset();
   placeAtLaunch();
   session.begin(current, config.seed, mode);
+  // A few birds are already up when you launch — otherwise a flight that never
+  // climbs never meets the flock at all.
+  flock.grant(config.flockAtLaunch);
   launchBlend = 0;
   landingFade = 0;
   title.hide();
   summaryLayer.style.display = 'none';
   summary.hide();
   hud.setVisible(true);
+  touchControls.setVisible(isTouch);
   renderer.setBirdVisible(true);
   renderer.chase.setMode('launch');
   renderer.chase.setBlend(0);
@@ -178,6 +192,7 @@ function startRun(mode: RunMode): void {
 function toTitle(): void {
   session.setPhase('title');
   hud.setVisible(false);
+  touchControls.setVisible(false);
   summaryLayer.style.display = 'none';
   summary.hide();
   placeAtLaunch();
@@ -191,7 +206,7 @@ function toTitle(): void {
     seed: config.seed,
     seedName: nameFromSeed(config.seed),
     best: session.logbook.best(),
-    isTouch: matchMedia('(pointer: coarse)').matches,
+    isTouch,
   });
 }
 

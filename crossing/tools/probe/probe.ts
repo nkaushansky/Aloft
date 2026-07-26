@@ -14,7 +14,11 @@ import { CloudLayer } from '../../src/render/sky/clouds';
 import { WindRibbons, AirColumns } from '../../src/render/air/windRibbons';
 import { ChaseCamera } from '../../src/render/camera/chase';
 import { createBirdState } from '../../src/sim/state';
+import { findLaunchSite } from '../../src/sim/terrain';
+import { stepFlight } from '../../src/sim/flight';
 import { PostPipeline } from '../../src/render/post/pipeline';
+import { BirdActor } from '../../src/render/actors/birdMesh';
+import { WaterPlane } from '../../src/render/world/water';
 
 const log: string[] = [];
 const results: Record<string, string> = {};
@@ -43,7 +47,7 @@ const scene = new THREE.Scene();
 const atmo = createAtmosphereUniforms(terrain.waterLevel());
 
 let skyDome: SkyDome, terrainR: TerrainRenderer, clouds: CloudLayer,
-    ribbons: WindRibbons, columns: AirColumns, chase: ChaseCamera, post: PostPipeline;
+    ribbons: WindRibbons, columns: AirColumns, chase: ChaseCamera, post: PostPipeline, birdA: BirdActor, water: WaterPlane;
 
 step('ChaseCamera', () => { chase = new ChaseCamera(config, terrain); });
 step('SkyDome', () => { skyDome = new SkyDome(scene, config, atmo, q); });
@@ -52,24 +56,32 @@ step('CloudLayer', () => { clouds = new CloudLayer(scene, config, wind, atmo, q)
 step('WindRibbons', () => { ribbons = new WindRibbons(scene, config, wind, atmo, q); });
 step('AirColumns', () => { columns = new AirColumns(scene, config, wind, atmo, q); });
 
-const bird = createBirdState(config, 0, 1800, 0);
+const site = findLaunchSite(terrain, config);
+let bird = createBirdState(config, site.x, site.groundHeight + config.launchAltitude, site.z);
+bird.yaw = Math.atan2(-site.ridgeDirX, -site.ridgeDirZ);
+let birdBuf = createBirdState(config, 0, 0, 0);
+chase.snap(bird);
+const hands = { pitch: 0, roll: 0, tuck: 0, spread: 0 };
 const freeCam = new THREE.PerspectiveCamera(62, 900/500, 0.5, config.viewDistance);
 const camPos = new THREE.Vector3();
 
+step('BirdActor', () => { birdA = new BirdActor(scene, config, atmo, q); });
+step('WaterPlane', () => { water = new WaterPlane(scene, config, terrain, atmo, q); });
 step('PostPipeline', () => { post = new PostPipeline(gl, scene, freeCam, q); post.setSize(900, 500, 1); });
 
 const sunScreen = new THREE.Vector2(0.5, 0.5);
 step('frames', () => {
-  for (let i = 0; i < 45; i++) {
+  for (let i = 0; i < 70; i++) {
     const dt = 1 / 60;
+    const nb = stepFlight(bird, hands, dt, config, terrain, wind, birdBuf);
+    birdBuf = bird; bird = nb;
     sky.update(dt);
     wind.update(dt, sky.state);
     chase.update(dt, bird, sky.state, 900 / 500);
     chase.camera.getWorldPosition(camPos);
     // Look down and forward from a fixed high vantage so the LAND is in frame,
     // not just the sky — the chase cam frames the horizon by design.
-    freeCam.position.set(0, terrain.heightAt(0,0) + 1400, 900);
-    freeCam.lookAt(0, terrain.heightAt(0,0) + 300, -2200);
+    freeCam.copy(chase.camera);
     freeCam.updateMatrixWorld();
     freeCam.getWorldPosition(camPos);
     syncAtmosphere(atmo, sky.state, camPos, i * dt);
@@ -78,6 +90,8 @@ step('frames', () => {
     clouds.update(dt, bird, sky.state, camPos);
     ribbons.update(dt, bird, sky.state, camPos);
     columns.update(dt, bird, sky.state, camPos);
+    birdA.update(dt, bird, sky.state, camPos);
+    water.update(dt, camPos, sky.state, 0.4, -0.9);
     // Drive the real post chain so what we look at is what the game outputs:
     // ACES, the grade, bloom and the vignette all live in here.
     const sd = sky.state.sunDir;

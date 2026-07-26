@@ -436,7 +436,10 @@ void main() {
   // hot on purpose — above 1.0 is where bloom lives.
   float fres = pow(1.0 - clamp(dot(N, -viewDir), 0.0, 1.0), 2.6);
   float backlit = pow(clamp(dot(-viewDir, uSunDir) * 0.5 + 0.5, 0.0, 1.0), 3.0);
-  col += uSunColor * uSunIntensity * fres * (0.18 + 2.6 * backlit) * uRim;
+  // Toned down from (0.18 + 2.6): shadeSurface already contributes a rim, and
+  // the two stacked turned the bird into a white plank under a high sun. This
+  // still burns at dawn and dusk, which is when it is supposed to.
+  col += uSunColor * uSunIntensity * fres * (0.10 + 0.85 * backlit) * uRim;
 
   // Moonlight, so the silhouette still exists at the top of the night.
   float mdl = clamp(dot(N, uMoonDir) * 0.5 + 0.5, 0.0, 1.0);

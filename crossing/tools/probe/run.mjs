@@ -8,7 +8,7 @@ const problems = [];
 p.on('console', m => { if (m.type()==='error'||m.type()==='warning') problems.push(`[${m.type()}] ${m.text()}`); });
 p.on('pageerror', e => problems.push(`[pageerror] ${e.message}`));
 const tier = process.argv[2] ?? 'high';
-await p.goto('http://localhost:5180/probe.html?q=' + tier, { waitUntil: 'domcontentloaded', timeout: 60000 });
+await p.goto('http://localhost:5180/probe.html?q=' + tier, { waitUntil: 'commit', timeout: 60000 });
 try { await p.waitForFunction(() => window.__probe, null, { timeout: 120000 }); }
 catch { console.log('PROBE NEVER FINISHED'); }
 const r = await p.evaluate(() => window.__probe ?? null);

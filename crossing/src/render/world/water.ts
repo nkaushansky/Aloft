@@ -142,7 +142,7 @@ const float MOON_GLITTER = 2.4;
  * mattering kilometres before the fog does.
  */
 float waterDepth(vec2 p) {
-  vec2 frac = (p - uDepthCenter) * ${glf(1 / DEPTH_SPAN)} + 0.5;
+  vec2 frac = (p - uDepthCenter) / ${glf(DEPTH_SPAN)} + 0.5;
   // Half-texel correction: the map's corner samples sit on the region's edges,
   // not at texel centres.
   vec2 uv = frac * ${glf((DEPTH_RES - 1) / DEPTH_RES)} + ${glf(0.5 / DEPTH_RES)};
@@ -206,7 +206,10 @@ vec3 swell(vec2 p, vec2 dir, float len, float amp, float speed, float jitter) {
  * mirror while the water at your feet is all texture.
  */
 float layerFade(float footprint, float len) {
-  return 1.0 - smoothstep(len * 90.0, len * 300.0, footprint);
+  // Tightened from (90, 300). At the old thresholds the long swells survived
+  // out to the horizon at grazing angles and aliased into hard diagonal bands
+  // across the whole lake — the single most visible artefact in the frame.
+  return 1.0 - smoothstep(len * 22.0, len * 85.0, footprint);
 }
 
 vec3 waves(vec2 p, float footprint) {
@@ -329,9 +332,9 @@ ${surface}
   // Losing the fine normals at distance would kill the streak, so the lobe
   // widens by exactly as much as the surface flattened: near the camera it is
   // tight and breaks into sparks, at the horizon it is a broad blazing path.
-  float far = smoothstep(1500.0, 60000.0, footprint);
-  float ax = mix(0.055, 0.30, far);
-  float ay = mix(0.040, 0.085, far);
+  float wide = smoothstep(1500.0, 60000.0, footprint);
+  float ax = mix(0.055, 0.30, wide);
+  float ay = mix(0.040, 0.085, wide);
 
   float sunUp = smoothstep(-0.03, 0.08, uSunDir.y);
   float spec = glint(N, viewDir, uSunDir, ax, ay) * sparkle;

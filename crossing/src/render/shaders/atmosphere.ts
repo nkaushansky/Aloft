@@ -195,8 +195,11 @@ vec3 skyColor(vec3 dir){
   col = mix(col, uGroundBounce, below * 0.86);
 
   float c = dot(dir, uSunDir);
-  // Rayleigh-ish forward brightening across the whole dome
-  col += uSunColor * uSunIntensity * 0.055 * rayleighPhase(c) * (0.35 + 0.65 * up);
+  // Rayleigh-ish forward brightening across the whole dome. Kept small on
+  // purpose: at 0.055 this term was adding as much light again as the zenith
+  // colour itself, which desaturated the entire sky to a pale neutral and
+  // then dragged everything else there through aerial perspective.
+  col += uSunColor * uSunIntensity * 0.024 * rayleighPhase(c) * (0.35 + 0.65 * up);
   // Mie halo hugging the sun, strongest near the horizon (dusty low air)
   float mie = miePhase(c, 0.76);
   col += uSunColor * uSunIntensity * mie * 0.16 * (0.4 + 0.6 * h);
@@ -220,7 +223,12 @@ vec3 aerialPerspective(vec3 color, vec3 worldPos, vec3 viewDir, float dist){
   float meanH = 0.5 * (camH + fragH);
   float heightFalloff = exp(-meanH / 2200.0);
 
-  float d = dist * uFogDensity * heightFalloff * 1000.0;
+  // FOG_SCALE turns uFogDensity (a per-metre coefficient of order 3e-5) into
+  // the dimensionless optical depth the falloff below expects. At 3.0 a clear
+  // midday gives roughly: 3 km barely touched, 15 km three-quarters hazed,
+  // 40 km gone. Raise it and the world closes in around you.
+  const float FOG_SCALE = 3.0;
+  float d = dist * uFogDensity * heightFalloff * FOG_SCALE;
   float f = 1.0 - exp(-d * d * 0.55 - d * 0.35);
 
   // Fog takes the colour of the sky you're looking through, not a flat grey.

@@ -148,7 +148,10 @@ vec3 cirrusDeck(vec3 dir, out float cover) {
 
   float f = afbm2(q * 0.9, CIRRUS_OCT) + 0.10 * afbm2(q * 4.1, 2);
   float wisp = smoothstep(0.52, 0.90, f);
-  wisp *= smoothstep(0.012, 0.11, h);
+  // Fade hard near the horizon. A flat deck projected onto near-horizontal
+  // rays stretches without limit, and the result is vertical smears standing
+  // over the skyline — the artefact reads as a broken shader, not as weather.
+  wisp *= smoothstep(0.055, 0.30, h);
 
   float c = dot(dir, uSunDir);
   // Ice forward-scatters ferociously: the wisps near the sun go white-hot.
@@ -164,8 +167,10 @@ vec3 cirrusDeck(vec3 dir, out float cover) {
   float night = 1.0 - smoothstep(-0.10, 0.05, uSunDir.y);
   col = mix(col, uSkyHorizon * 0.45 + uAmbient * uAmbientIntensity * 0.35, night);
 
-  // Nearly transparent under a high sun, thick and structural at sunset.
-  cover = wisp * mix(0.22, 0.72, low) * uCirrus;
+  // Nearly transparent under a high sun, thick and structural at sunset. The
+  // high-sun figure has to be genuinely small: cirrus at noon that reads as a
+  // veil bleaches the blue out of the whole dome.
+  cover = wisp * mix(0.07, 0.66, low) * uCirrus;
   return col;
 }
 

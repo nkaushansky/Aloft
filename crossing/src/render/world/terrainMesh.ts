@@ -724,10 +724,10 @@ export class TerrainRenderer {
         // ---------------------------------------------------------- albedo
         // Two scales, because one always reads as a pattern. The fine grain
         // fades out with distance or it aliases into a shimmering mess.
-        float near = 1.0 - smoothstep(150.0, 1100.0, dist);
+        float nearFade = 1.0 - smoothstep(150.0, 1100.0, dist);
         float grit = anoise2(vWorld.xz * 0.085);
-        float patch = afbm2(vWorld.xz * 0.0062, 3);
-        float detail = (grit - 0.5) * 0.17 * near + (patch - 0.4375) * 0.34;
+        float mottle = afbm2(vWorld.xz * 0.0062, 3);
+        float detail = (grit - 0.5) * 0.17 * nearFade + (mottle - 0.4375) * 0.34;
         vec3 albedo = vColor * (1.0 + detail);
         // A touch of hue wander with it, so it isn't pure brightness noise.
         albedo.g *= 1.0 + detail * 0.22;
@@ -743,7 +743,7 @@ export class TerrainRenderer {
           uSnowLine, uSnowLine + uSnowBlend, vWorld.y + snowJit * uSnowBlend * 0.6);
         float holds = smoothstep(0.52, 0.80, N.y);
         float snow = snowH * holds;
-        vec3 snowAlbedo = vec3(0.80, 0.855, 0.95) * (1.0 + 0.17 * (grit - 0.5) * near);
+        vec3 snowAlbedo = vec3(0.80, 0.855, 0.95) * (1.0 + 0.17 * (grit - 0.5) * nearFade);
         albedo = mix(albedo, snowAlbedo, snow);
         // Snow fills the creases it settles in, so it flattens the curvature term.
         ao = mix(ao, mix(1.0, ao, 0.45), snow);

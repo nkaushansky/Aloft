@@ -76,7 +76,7 @@ const KEYS: Keyframe[] = [
     // the day: hot orange against a zenith that is still last night's violet.
     t: 0.075,
     sunColor: [1.6, 0.62, 0.24],
-    sunIntensity: 1.15,
+    sunIntensity: 1.02,
     skyZenith: [0.055, 0.09, 0.2],
     skyHorizon: [0.85, 0.42, 0.26],
     groundBounce: [0.1, 0.075, 0.06],
@@ -90,7 +90,7 @@ const KEYS: Keyframe[] = [
     // 0.13 — golden morning. Long shadows, warm ground, cold sky.
     t: 0.13,
     sunColor: [1.6, 1.05, 0.62],
-    sunIntensity: 1.5,
+    sunIntensity: 1.22,
     skyZenith: [0.09, 0.17, 0.36],
     skyHorizon: [0.7, 0.62, 0.55],
     groundBounce: [0.15, 0.13, 0.1],
@@ -104,7 +104,7 @@ const KEYS: Keyframe[] = [
     // 0.28 — clear mid-morning. The air has cleaned up; distance opens out.
     t: 0.28,
     sunColor: [1.55, 1.35, 1.05],
-    sunIntensity: 1.75,
+    sunIntensity: 1.40,
     skyZenith: [0.13, 0.26, 0.55],
     skyHorizon: [0.6, 0.68, 0.78],
     groundBounce: [0.18, 0.18, 0.15],
@@ -118,7 +118,7 @@ const KEYS: Keyframe[] = [
     // 0.45 — high noon. Flat, white, and slightly dull by design.
     t: 0.45,
     sunColor: [1.5, 1.46, 1.36],
-    sunIntensity: 1.9,
+    sunIntensity: 1.50,
     skyZenith: [0.14, 0.29, 0.62],
     skyHorizon: [0.62, 0.71, 0.83],
     groundBounce: [0.2, 0.2, 0.18],
@@ -132,7 +132,7 @@ const KEYS: Keyframe[] = [
     // 0.60 — warm afternoon. The best air of the day, and the light softens.
     t: 0.6,
     sunColor: [1.6, 1.34, 0.98],
-    sunIntensity: 1.8,
+    sunIntensity: 1.44,
     skyZenith: [0.13, 0.25, 0.55],
     skyHorizon: [0.72, 0.7, 0.7],
     groundBounce: [0.21, 0.19, 0.15],
@@ -146,7 +146,7 @@ const KEYS: Keyframe[] = [
     // 0.75 — golden hour. Everything the art direction exists to deliver.
     t: 0.75,
     sunColor: [1.85, 1.05, 0.5],
-    sunIntensity: 1.65,
+    sunIntensity: 1.34,
     skyZenith: [0.1, 0.18, 0.42],
     skyHorizon: [1.0, 0.62, 0.36],
     groundBounce: [0.2, 0.14, 0.09],
@@ -160,7 +160,7 @@ const KEYS: Keyframe[] = [
     // 0.83 — the disc touching the horizon.
     t: 0.83,
     sunColor: [1.9, 0.52, 0.2],
-    sunIntensity: 1.05,
+    sunIntensity: 0.95,
     skyZenith: [0.06, 0.09, 0.26],
     skyHorizon: [0.95, 0.36, 0.22],
     groundBounce: [0.12, 0.07, 0.06],

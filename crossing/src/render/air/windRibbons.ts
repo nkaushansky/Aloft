@@ -157,7 +157,7 @@ const RIBBON_HALF_WIDTH = 0.45;
  * everything else scales off it. Kept low because there are thousands of them
  * and because the calm tone says: suggest, don't shout.
  */
-const BASE_OPACITY = 0.5;
+const BASE_OPACITY = 0.22;
 
 /** Metres of clearance a respawn keeps from the eye, so nothing pops on-lens. */
 const SPAWN_CLEARANCE = 30;

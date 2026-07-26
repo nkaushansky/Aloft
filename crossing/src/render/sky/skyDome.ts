@@ -80,7 +80,10 @@ vec3 starField(vec3 dir, float grid, float mw) {
 
   // Core is held near 1.5 px wide whatever the grid density, so raising
   // quality adds stars instead of fattening them.
-  float sharp = 936000.0 / (grid * grid);
+  // Held near a pixel and a half wide whatever the grid density, so raising
+  // quality adds stars instead of fattening them. Halved from 936000 after the
+  // night shots came back reading as a field of dots rather than of stars.
+  float sharp = 2400000.0 / (grid * grid);
   float core = exp(-d2 * sharp);
   float halo = exp(-d2 * sharp * 0.1) * 0.2;
 
@@ -290,7 +293,7 @@ export class SkyDome {
     const low = tier === 'low';
 
     // More stars at higher tiers, not bigger ones (see `sharp` in the shader).
-    this.own.uStarGrid.value = low ? 44 : tier === 'medium' ? 60 : ultra ? 92 : 76;
+    this.own.uStarGrid.value = low ? 90 : tier === 'medium' ? 130 : ultra ? 210 : 170;
 
     // The dome sits well inside the draw distance so it can never be clipped
     // by the far plane; depthTest is off and it draws first, so it still ends

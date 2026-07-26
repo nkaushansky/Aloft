@@ -72,6 +72,9 @@ await page.goto(pageUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
 // Wait for the game to expose its hooks and finish booting.
 try {
   await page.waitForFunction(() => !!window.__aloft, null, { timeout: 90000 });
+  // Wait for the boot gate to lift before touching anything: changing the seed
+  // mid-stream throws the terrain grid away and the curtain never comes up.
+  await page.waitForFunction(() => window.__aloft.booted(), null, { timeout: 180000 });
 } catch {
   console.error('!! the game never booted. Problems so far:');
   for (const p of problems) console.error('   ' + p);
@@ -86,8 +89,10 @@ await page.screenshot({ path: resolve(outDir, '00-title.png') });
 console.log('  · title');
 
 await page.evaluate(() => window.__aloft.start('crossing'));
-// Let the launch sweep finish and the world stream in.
-await page.waitForTimeout(6000);
+// Let the launch sweep finish and the world stream in. Software rasterisation
+// runs at a few frames a second, so this needs to be generous.
+await page.waitForTimeout(14000);
+console.log('  · phase after launch:', await page.evaluate(() => window.__aloft.phase()));
 
 for (const m of MOMENTS) {
   await page.evaluate((t) => window.__aloft.setTime(t), m.t);

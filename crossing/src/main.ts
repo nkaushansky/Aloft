@@ -260,6 +260,10 @@ let frames = 0;
 let fpsAccum = 0;
 let fps = 0;
 
+/** Seconds before the boot screen lifts regardless of streaming progress. */
+const BOOT_TIMEOUT = 12;
+let bootElapsed = 0;
+
 const adaptive = new AdaptiveQuality(quality.tier, (q) => renderer.setQuality(q));
 const scratchInput: FlightInput = { pitch: 0, roll: 0, tuck: 0, spread: 0 };
 let booted = false;
@@ -271,9 +275,19 @@ function frame(now: number): void {
 
   // --- boot gate: hold the curtain until the world under us actually exists
   if (!booted) {
-    boot(0.5 + 0.5 * (renderer.worldReady ? 1 : 0.3), renderer.worldReady ? 'ready' : 'building the sky');
+    bootElapsed += dt;
+    const worldReady = renderer.worldReady;
+    // The curtain comes up on a timer as well as on readiness. A device slow
+    // enough to still be streaming after BOOT_TIMEOUT is a device that should
+    // be flying in a half-built world rather than staring at a progress bar
+    // forever — the terrain keeps filling in behind the title screen anyway.
+    const timedOut = bootElapsed > BOOT_TIMEOUT;
+    boot(
+      worldReady ? 1 : Math.min(0.95, 0.35 + bootElapsed / BOOT_TIMEOUT * 0.6),
+      worldReady ? 'ready' : 'building the sky',
+    );
     renderer.render(dt, current, sky.state, flock.birds);
-    if (renderer.worldReady) {
+    if (worldReady || timedOut) {
       booted = true;
       bootEl.classList.add('gone');
       setTimeout(() => bootEl.remove(), 1300);
@@ -399,4 +413,7 @@ window.__aloft = {
   setTime: (t: number) => sky.setTime(t),
   setSeed: (s: number) => newSeed(s),
   fps: () => fps,
+  booted: () => booted,
+  phase: () => session.phase,
+  worldReady: () => renderer.worldReady,
 };

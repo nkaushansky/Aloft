@@ -371,11 +371,11 @@ export const config = {
   /** Draw distance (m). Beyond this is fog and imagination. */
   viewDistance: 22000,
   /** How many wind ribbons live around the bird at ultra quality. */
-  windRibbons: 2600,
+  windRibbons: 1300,
   /** The box (m) ribbons are kept inside, centred on the bird. */
   ribbonBox: 900,
   /** Length of a ribbon in seconds of air travel. */
-  ribbonLife: 2.4,
+  ribbonLife: 1.25,
   /** Cumulus puffs per cloud. */
   cloudPuffs: 9,
   /** Contrail appears above this height (m). */

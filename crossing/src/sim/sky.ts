@@ -470,7 +470,11 @@ export function phaseDescription(phase: DayPhase): string {
  */
 export function timeLabel(t: number): string {
   const START_MINUTES = 4 * 60 + 30;
-  const total = (START_MINUTES + ((t % 1) + 1) % 1 * 24 * 60) % (24 * 60);
+  // The crossing spans one long summer day, not a full rotation: t = 0 is
+  // half four in the morning and t = 1 is half ten at night. Mapping the whole
+  // 24 hours across it put golden hour at 23:14, which is nonsense.
+  const SPAN_MINUTES = 18 * 60;
+  const total = (START_MINUTES + (((t % 1) + 1) % 1) * SPAN_MINUTES) % (24 * 60);
   const h = Math.floor(total / 60);
   const m = Math.floor(total % 60);
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;

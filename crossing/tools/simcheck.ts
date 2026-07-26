@@ -19,7 +19,7 @@ import { stepFlight, glideRatio } from '../src/sim/flight';
 import { Flock } from '../src/sim/flock';
 import { createBirdState, cloneBirdState } from '../src/sim/state';
 import { AirKind, makeWindSample } from '../src/sim/types';
-import type { BirdState, FlightInput, TerrainSample } from '../src/sim/types';
+import type { BirdState, FlightInput, TerrainSample, WindField } from '../src/sim/types';
 
 let failures = 0;
 let checks = 0;
@@ -196,10 +196,28 @@ section('the air');
   ok(maxUp > 3, 'there is real lift out there', `best ${maxUp.toFixed(1)} m/s`);
   ok(maxDown < -1, 'there is real sink out there', `worst ${maxDown.toFixed(1)} m/s`);
 
+  // Wave and rotor live downwind of the big ranges, which may be tens of km
+  // from the origin — so sample the volume around each wave system as well as
+  // the box around home, or the assertion just measures where we happened to
+  // stand rather than whether the air exists.
+  for (const w of wind.waves()) {
+    for (let d = 0; d < 90; d++) {
+      for (let h = 0; h < 40; h++) {
+        const dist = 200 + d * 260;
+        const lateral = ((d * 613) % 2000) - 1000;
+        const x = w.crestX + w.dirX * dist - w.dirZ * lateral;
+        const z = w.crestZ + w.dirZ * dist + w.dirX * lateral;
+        const y = w.base - 400 + h * 220;
+        wind.sample(x, y, z, wSample);
+        seen.set(wSample.kind, (seen.get(wSample.kind) ?? 0) + 1);
+      }
+    }
+  }
+
   const kindNames = ['Still', 'Thermal', 'Ridge', 'Wave', 'Rotor', 'Convergence', 'Sink'];
   for (let k = 1; k <= 6; k++) {
     const n = seen.get(k as AirKind) ?? 0;
-    ok(n > 0, `${kindNames[k]} air occurs in the world`, `${n} samples in ${(R / 1000) * 2}km box`);
+    ok(n > 0, `${kindNames[k]} air occurs in the world`, `${n} samples`);
   }
 
   // Thermals must actually tilt and drift, or the skill they teach is fake.
@@ -265,15 +283,48 @@ section('flight');
   const site = findLaunchSite(terrain, config);
   const hands: FlightInput = { pitch: 0, roll: 0, tuck: 0, spread: 0 };
 
+  /**
+   * Still air. The flight-model assertions below are about the MODEL, and in
+   * the real atmosphere a hands-off glide over a sunlit ridge at midday
+   * quite correctly goes UP — which tells you the wind field works and
+   * nothing whatsoever about the drag polar.
+   */
+  const stillAir: WindField = {
+    sample: (_x, _y, _z, o) => {
+      o.vx = 0;
+      o.vy = 0;
+      o.vz = 0;
+      o.kind = AirKind.Still;
+      o.intensity = 0;
+      o.turbulence = 0;
+      return o;
+    },
+    update: () => {},
+    prevailingAt: (_y, o) => {
+      o.x = 0;
+      o.y = 0;
+      o.z = 0;
+      return o;
+    },
+    thermals: () => [],
+    waves: () => [],
+    convergences: () => [],
+  };
+
   /** Fly hands-off for `secs` from a fresh launch and report what happened. */
-  function glide(secs: number, input: FlightInput, wing = 0): { a: BirdState; b: BirdState } {
+  function glide(
+    secs: number,
+    input: FlightInput,
+    wing = 0,
+    field: WindField = stillAir,
+  ): { a: BirdState; b: BirdState } {
     let cur = createBirdState(config, site.x, site.groundHeight + 2500, site.z);
     cur.wing = wing;
     const start = cloneBirdState(cur);
     let buf = cloneBirdState(cur);
     const dt = 1 / 60;
     for (let i = 0; i < secs * 60; i++) {
-      const next = stepFlight(cur, input, dt, config, terrain, wind, buf);
+      const next = stepFlight(cur, input, dt, config, terrain, field, buf);
       buf = cur;
       cur = next;
       if (cur.landed) break;

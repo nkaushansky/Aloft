@@ -411,8 +411,8 @@ export class ProceduralTerrain implements TerrainProvider {
     // ============================================== 1. CONTINENTAL SHAPE
     // Warp before sampling. An unwarped fbm makes round soapy islands; a
     // warped one makes peninsulas, bays and drowned valleys. The shoreline is
-    // the single most valuable feature the noise gives us, so it is worth two
-    // extra octaves to make it interesting.
+    // the single most valuable feature the noise gives us for free — it is
+    // where the sea breeze converges — so it is worth two extra lookups.
     const cs = 1 / c.continentScale;
     const cwx = x * cs * CONT_WARP_FREQ;
     const cwz = z * cs * CONT_WARP_FREQ;

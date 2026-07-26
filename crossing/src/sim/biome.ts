@@ -438,7 +438,6 @@ export class ProceduralBiomes implements BiomeProvider {
 
     // --- the rest of the readout ------------------------------------------
     out.kind = kind;
-    out.heat = this.heatFromWeights(sunFacing, grain);
 
     // Canopy comes in stands and clearings. A flat 1.0 forest reads as
     // astroturf from the air — and thermals need the holes to exist at all.
@@ -455,39 +454,49 @@ export class ProceduralBiomes implements BiomeProvider {
 
     // Standing water is, definitionally, wet.
     out.moisture = clamp01(lerp(moisture, 1, w[BiomeKind.Water]));
+
+    // Last, because it reclassifies from the cheap probe and clobbers `w`.
+    out.heat = this.heatCore(x, z, h, moisture, grain);
     return out;
   }
 
   /**
    * Just the heat. The wind field calls this for every thermal candidate every
-   * frame, so it is a deliberately cheap cousin of `sampleAt`: one terrain
-   * height, one aspect probe, and two noise fields.
-   *
-   * The aspect probe is a single offset height sample along the sun bearing.
-   * The height difference gives both the aspect (does the ground fall away
-   * toward the sun?) and a stand-in for steepness. Reading one axis instead of
-   * two means a face running across the sun line reads flatter than it is, so
-   * this can miss a hot rock wall it should have found; over a whole map the
-   * error averages to a few percent of heat. The wind field only ever consults
-   * `heatAt`, so it stays self-consistent — but do not expect the number here
-   * to match `sampleAt().heat` sample for sample in steep country.
+   * frame, so it is deliberately lean: one terrain height, one aspect probe,
+   * and two noise fields.
    */
   heatAt(x: number, z: number): number {
     const h = this.terrain.heightAt(x, z);
+    return this.heatCore(x, z, h, this.moistureField(x, z, h), this.grainField(x, z));
+  }
+
+  /**
+   * The one place heat is decided, for everybody.
+   *
+   * Aspect comes from a single height probe offset along the sun bearing: the
+   * difference says both which way the face looks and, roughly, how steep it
+   * is. Reading one axis instead of two means a face running across the sun
+   * line reads flatter than it really is — so `SLOPE_PROBE_GAIN` corrects the
+   * average and the remainder is accepted.
+   *
+   * `sampleAt` routes through here too, even though it is holding an exact
+   * surface normal it could have used instead. That costs it one extra probe
+   * and buys something worth more: the heat a debug overlay draws and the heat
+   * the wind field actually flies on are the *same number*, not two nearly
+   * identical ones that quietly disagree over every cliff.
+   */
+  private heatCore(x: number, z: number, h: number, moisture: number, grain: number): number {
     const hs = this.terrain.heightAt(
       x + SUN_ASPECT_X * ASPECT_PROBE,
       z + SUN_ASPECT_Z * ASPECT_PROBE,
     );
     // Positive gradient means the ground drops away toward the sun, i.e. the
-    // face is tilted into it. Converting through 1/sqrt(1+g²) turns the
-    // gradient into the sine of the tilt, matching the 0-flat..1-vertical
-    // shape TerrainSample.slope is documented to use.
+    // face is tilted into it. Dividing by sqrt(1+g²) turns the gradient into
+    // the sine of the tilt, matching the 0-flat..1-vertical shape
+    // TerrainSample.slope is documented to use.
     const g = (h - hs) / ASPECT_PROBE;
     const sunFacing = g / Math.sqrt(1 + g * g);
     const slope = clamp01((sunFacing < 0 ? -sunFacing : sunFacing) * SLOPE_PROBE_GAIN);
-
-    const moisture = this.moistureField(x, z, h);
-    const grain = this.grainField(x, z);
     this.weigh(h, slope, sunFacing, moisture, grain);
     return this.heatFromWeights(sunFacing, grain);
   }

@@ -179,6 +179,10 @@ function startRun(mode: RunMode): void {
   title.hide();
   summaryLayer.style.display = 'none';
   summary.hide();
+  // Drop focus off whatever button started the run. A focused button is still
+  // a button: the browser will re-activate it on Space or Enter, and Space is
+  // the spread key. Belt and braces alongside the preventDefault fix.
+  (document.activeElement as HTMLElement | null)?.blur();
   hud.setVisible(true);
   touchControls.setVisible(isTouch);
   renderer.setBirdVisible(true);

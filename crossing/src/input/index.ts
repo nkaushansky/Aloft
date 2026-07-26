@@ -35,8 +35,17 @@ export class KeyboardInput implements InputReader {
   private readonly actions = new Map<string, () => void>();
 
   private readonly onDown = (e: KeyboardEvent): void => {
-    if (e.repeat) return;
+    // preventDefault FIRST, before the repeat guard.
+    //
+    // Holding a key fires keydown over and over with repeat === true. Bailing
+    // out before preventDefault meant every one of those repeats kept the
+    // browser's default action — and the browser's default action for Space is
+    // to press the focused button. After clicking BEGIN THE CROSSING that
+    // button still had focus, so holding Space to spread the wings silently
+    // restarted the run several times a second: screen flash, bird back at the
+    // launch ridge, air announced all over again.
     if (KEY_BINDINGS[e.code] || e.code === 'Space') e.preventDefault();
+    if (e.repeat) return;
     this.down.add(e.code);
     const fn = this.actions.get(e.code);
     if (fn) fn();

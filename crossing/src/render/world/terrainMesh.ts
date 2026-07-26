@@ -50,10 +50,10 @@ const HEIGHT_COST = 0.22;
  * about a quarter of a 60 Hz frame — enough to refill a whole ring in a second
  * of flying, small enough that the refill is invisible.
  */
-const BUILD_VERTS = 24000;
+const BUILD_VERTS = 46000;
 const BUILD_MS = 4;
 /** While the boot screen is still up there is no frame to protect, so spend. */
-const BOOT_VERTS = 120000;
+const BOOT_VERTS = 260000;
 const BOOT_MS = 26;
 
 /** Ring 0 keeps the full resolution; every ring out halves it, down to this. */

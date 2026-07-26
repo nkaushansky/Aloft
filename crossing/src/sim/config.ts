@@ -125,8 +125,18 @@ export const config = {
   /** Water surface height (m). Basins below it become lakes and sea. */
   waterLevel: 0,
 
-  /** Metres per terrain chunk edge. */
-  chunkSize: 1024,
+  /**
+   * Metres per terrain chunk edge.
+   *
+   * Raised from 1024 after desktop playtesting. The streamer keeps a fixed
+   * ring count around the camera and only drops RESOLUTION with distance, not
+   * footprint — so the visible world was rings x chunkSize = about 7 km, under
+   * a fog curve tuned for fifteen. The land ran out well inside the haze and
+   * you could watch new tiles arrive at the horizon. At 2400 the same 200-odd
+   * chunks reach roughly 19 km, which is past the point where aerial
+   * perspective has taken over.
+   */
+  chunkSize: 2400,
 
   /** Continental relief: the biggest, slowest shape of the land (m). */
   continentAmplitude: 260,

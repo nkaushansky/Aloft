@@ -52,6 +52,16 @@ const browser = await chromium.launch({
     '--ignore-gpu-blocklist',
     '--disable-dev-shm-usage',
     '--no-sandbox',
+    // Outbound HTTPS in this environment goes through an agent proxy. curl
+    // picks it up from the environment; Chromium has to be told, and has to be
+    // told to trust the proxy's CA, or every external fetch is a reset.
+    ...(process.env.HTTPS_PROXY
+      ? [
+          `--proxy-server=${process.env.HTTPS_PROXY}`,
+          `--proxy-bypass-list=${(process.env.NO_PROXY ?? '').split(',').filter(Boolean).join(';') || '<-loopback>'}`,
+          '--ignore-certificate-errors',
+        ]
+      : []),
   ],
 });
 

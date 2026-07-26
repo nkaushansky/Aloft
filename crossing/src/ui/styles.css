@@ -1,0 +1,796 @@
+/* =========================================================================
+   ALOFT — THE CROSSING
+   Interface art direction.
+
+   Two rules govern everything here:
+
+   1. THE UI LIVES INSIDE THE ATMOSPHERE. Every colour below is derived from
+      four custom properties that JavaScript rewrites each frame from the sky
+      state. At golden hour the instruments go warm; at blue hour they go
+      indigo; at night they cool to moonlit grey. Nothing in the interface is
+      allowed to be a fixed colour that fights the frame behind it.
+
+   2. INSTRUMENTS, NOT WIDGETS. This is a soaring game, so the interface
+      borrows from real sailplane instruments — a vertical vario tape, a
+      speed scale with a target bug, an altitude column. Thin rules, mono
+      numerals, generous negative space. Nothing has a drop shadow. Nothing
+      is rounded more than it has to be.
+   ========================================================================= */
+
+:root {
+  /* Rewritten every frame from the sky. These are the pre-dawn defaults. */
+  --sky-ink: 218 228 242;      /* primary text — always the brightest thing */
+  --sky-dim: 150 166 190;      /* secondary text, scale ticks */
+  --sky-glow: 255 214 152;     /* the sun's colour — accents, positive lift */
+  --sky-deep: 10 16 28;        /* the darkest sky colour — panel grounds */
+  --sky-cool: 120 178 216;     /* the shadow/ambient colour — sink, cool UI */
+
+  --ink: rgb(var(--sky-ink));
+  --dim: rgba(var(--sky-dim) / 0.82);
+  --faint: rgba(var(--sky-dim) / 0.42);
+  --glow: rgb(var(--sky-glow));
+  --cool: rgb(var(--sky-cool));
+  --panel: rgba(var(--sky-deep) / 0.34);
+  --hairline: rgba(var(--sky-ink) / 0.16);
+  --hairline-soft: rgba(var(--sky-ink) / 0.08);
+
+  --lift: 255 206 122;         /* rising air */
+  --sink: 122 164 208;         /* descending air */
+
+  --mono: 'Spline Sans Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --serif: 'Fraunces', 'Iowan Old Style', Georgia, serif;
+  --sans: 'Karla', system-ui, -apple-system, sans-serif;
+
+  --gutter: clamp(16px, 2.4vw, 34px);
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-soft: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #05070d;
+  color: var(--ink);
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  overscroll-behavior: none;
+  touch-action: none;
+}
+
+#app { position: fixed; inset: 0; }
+#app canvas { display: block; width: 100%; height: 100%; }
+
+/* Every overlay layer sits above the canvas and ignores the pointer unless
+   it explicitly wants it. Flying must never be interrupted by a stray div. */
+.layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+.layer.interactive { pointer-events: auto; }
+
+.tnum { font-variant-numeric: tabular-nums; }
+
+/* =========================================================================
+   BOOT
+   ========================================================================= */
+
+#boot {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(ellipse at 50% 62%, #12203a 0%, #070b14 58%, #04060b 100%);
+  transition: opacity 1.1s var(--ease-soft), visibility 1.1s;
+}
+#boot.gone { opacity: 0; visibility: hidden; }
+
+.boot-inner { text-align: center; width: min(84vw, 380px); }
+
+.boot-mark { width: 120px; height: 60px; opacity: 0.9; }
+.boot-mark .bm-path {
+  fill: none;
+  stroke: rgba(var(--sky-glow) / 0.55);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-dasharray: 240;
+  stroke-dashoffset: 240;
+  animation: draw 2.6s var(--ease) forwards;
+}
+.boot-mark .bm-wing { fill: rgb(var(--sky-glow)); animation: rise 3.4s var(--ease-soft) infinite; }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+@keyframes rise {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+.boot-title {
+  font-family: var(--serif);
+  font-weight: 300;
+  font-size: clamp(46px, 11vw, 68px);
+  line-height: 1;
+  letter-spacing: 0.012em;
+  margin: 10px 0 0;
+  color: rgb(var(--sky-ink));
+}
+.boot-sub {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
+  color: rgba(var(--sky-glow) / 0.72);
+  margin: 10px 0 30px;
+  padding-left: 0.42em;
+}
+.boot-bar {
+  height: 1px;
+  background: rgba(var(--sky-ink) / 0.14);
+  overflow: hidden;
+}
+.boot-bar i {
+  display: block;
+  height: 100%;
+  width: 0%;
+  background: rgb(var(--sky-glow));
+  transition: width 0.5s var(--ease);
+}
+.boot-note {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.16em;
+  color: rgba(var(--sky-dim) / 0.6);
+  margin: 14px 0 0;
+  min-height: 1.4em;
+}
+
+/* =========================================================================
+   TITLE
+   ========================================================================= */
+
+#title {
+  display: grid;
+  align-content: center;
+  padding: 0 var(--gutter);
+  background: linear-gradient(
+    100deg,
+    rgba(var(--sky-deep) / 0.72) 0%,
+    rgba(var(--sky-deep) / 0.34) 42%,
+    rgba(var(--sky-deep) / 0) 74%
+  );
+  transition: opacity 0.9s var(--ease-soft);
+}
+#title.hidden { opacity: 0; pointer-events: none; }
+
+.title-block { max-width: 560px; margin-left: clamp(0px, 5vw, 90px); }
+
+.title-eyebrow {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  color: rgba(var(--sky-glow) / 0.8);
+  margin: 0 0 14px;
+}
+.title-word {
+  font-family: var(--serif);
+  font-weight: 300;
+  font-size: clamp(64px, 15vw, 148px);
+  line-height: 0.86;
+  letter-spacing: -0.012em;
+  margin: 0;
+  color: rgb(var(--sky-ink));
+}
+.title-word em {
+  font-style: italic;
+  font-weight: 300;
+  color: rgba(var(--sky-glow) / 0.95);
+}
+.title-tag {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 300;
+  font-size: clamp(17px, 2.2vw, 22px);
+  line-height: 1.5;
+  color: rgba(var(--sky-ink) / 0.78);
+  max-width: 34ch;
+  margin: 22px 0 0;
+}
+
+.title-seed {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin: 30px 0 0;
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  color: var(--faint);
+}
+.title-seed b {
+  color: rgb(var(--sky-ink));
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  font-size: 14px;
+}
+.title-seed button {
+  font: inherit;
+  letter-spacing: 0.14em;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--hairline);
+  color: var(--dim);
+  padding: 2px 0;
+  cursor: pointer;
+  transition: color 0.25s, border-color 0.25s;
+}
+.title-seed button:hover { color: var(--glow); border-color: rgba(var(--sky-glow) / 0.6); }
+
+.title-actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 34px 0 0; }
+
+.btn {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgb(var(--sky-ink));
+  background: rgba(var(--sky-deep) / 0.4);
+  border: 1px solid var(--hairline);
+  padding: 13px 22px;
+  cursor: pointer;
+  transition: background 0.3s var(--ease), border-color 0.3s, color 0.3s, transform 0.3s var(--ease);
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+}
+.btn:hover {
+  background: rgba(var(--sky-glow) / 0.14);
+  border-color: rgba(var(--sky-glow) / 0.65);
+  color: rgb(var(--sky-glow));
+}
+.btn:active { transform: translateY(1px); }
+.btn.primary {
+  background: rgba(var(--sky-glow) / 0.9);
+  border-color: rgba(var(--sky-glow) / 0.9);
+  color: rgb(var(--sky-deep));
+  font-weight: 500;
+}
+.btn.primary:hover { background: rgb(var(--sky-glow)); color: rgb(var(--sky-deep)); }
+.btn.ghost { background: none; }
+
+.title-foot {
+  position: absolute;
+  left: var(--gutter);
+  right: var(--gutter);
+  bottom: var(--gutter);
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.16em;
+  color: var(--faint);
+  text-transform: uppercase;
+}
+
+/* =========================================================================
+   HUD — the instruments
+   ========================================================================= */
+
+#hud {
+  font-family: var(--mono);
+  transition: opacity 0.7s var(--ease-soft);
+}
+#hud.hidden { opacity: 0; }
+#hud.dim { opacity: 0.34; }
+
+.hud-corner { position: absolute; display: grid; gap: 3px; }
+.hud-tl { top: var(--gutter); left: var(--gutter); }
+.hud-tr { top: var(--gutter); right: var(--gutter); justify-items: end; text-align: right; }
+.hud-bl { bottom: var(--gutter); left: var(--gutter); }
+.hud-br { bottom: var(--gutter); right: var(--gutter); justify-items: end; text-align: right; }
+
+.readout-label {
+  font-size: 9.5px;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.readout-value {
+  font-size: clamp(26px, 3.4vw, 40px);
+  font-weight: 300;
+  line-height: 0.98;
+  letter-spacing: -0.01em;
+  color: rgb(var(--sky-ink));
+}
+.readout-value small {
+  font-size: 0.36em;
+  letter-spacing: 0.2em;
+  color: var(--faint);
+  margin-left: 5px;
+  font-weight: 400;
+}
+.readout-sub {
+  font-size: 10.5px;
+  letter-spacing: 0.13em;
+  color: var(--dim);
+}
+
+/* --- the vario: the single most important instrument in a soaring game --- */
+.vario {
+  position: absolute;
+  left: var(--gutter);
+  top: 50%;
+  transform: translateY(-50%);
+  width: 46px;
+  height: min(46vh, 330px);
+  display: grid;
+  grid-template-columns: 13px 1fr;
+  gap: 8px;
+  align-items: stretch;
+}
+.vario-scale {
+  position: relative;
+  border-left: 1px solid var(--hairline);
+}
+.vario-scale i {
+  position: absolute;
+  left: 0;
+  width: 6px;
+  height: 1px;
+  background: var(--hairline);
+}
+.vario-scale i.major { width: 11px; background: rgba(var(--sky-ink) / 0.3); }
+.vario-scale i.zero { width: 15px; background: rgba(var(--sky-ink) / 0.55); }
+
+/* The bar grows up from centre on lift and down on sink. Colour is the air
+   kind, so the instrument tells you what you are in as well as how fast. */
+.vario-bar { position: relative; overflow: visible; }
+.vario-fill {
+  position: absolute;
+  left: 0;
+  width: 3px;
+  background: var(--vario-color, rgb(var(--lift)));
+  transition: background-color 0.5s var(--ease-soft);
+  box-shadow: 0 0 12px 0 var(--vario-color, rgb(var(--lift)));
+}
+.vario-needle {
+  position: absolute;
+  left: -3px;
+  width: 15px;
+  height: 1px;
+  background: rgb(var(--sky-ink));
+}
+.vario-num {
+  position: absolute;
+  left: 20px;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  transform: translateY(-50%);
+  white-space: nowrap;
+  color: rgb(var(--sky-ink));
+}
+.vario-kind {
+  position: absolute;
+  left: 20px;
+  bottom: -22px;
+  font-size: 9.5px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--vario-color, var(--dim));
+  white-space: nowrap;
+  transition: color 0.5s var(--ease-soft);
+}
+
+/* --- the speed scale, with the speed-to-fly bug --- */
+.speedbar {
+  position: relative;
+  width: 128px;
+  height: 3px;
+  background: rgba(var(--sky-ink) / 0.12);
+  margin-top: 8px;
+}
+.speedbar i {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: rgba(var(--sky-ink) / 0.6);
+}
+/* The bug is a nudge, never an instruction: it says "the air you are in
+   wants this speed". Learning to chase it is the whole MacCready idea. */
+.speedbar b {
+  position: absolute;
+  top: -4px;
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 6px solid rgb(var(--sky-glow));
+  transform: translateX(-4px);
+  transition: left 0.35s var(--ease-soft);
+}
+.speedbar.stall { background: rgba(var(--lift) / 0.35); animation: pulse 0.9s infinite; }
+@keyframes pulse { 50% { opacity: 0.45; } }
+
+/* --- wing configuration --- */
+.wing {
+  position: absolute;
+  left: 50%;
+  bottom: var(--gutter);
+  transform: translateX(-50%);
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+}
+.wing-track {
+  position: relative;
+  width: 132px;
+  height: 2px;
+  background: rgba(var(--sky-ink) / 0.14);
+}
+.wing-track i {
+  position: absolute;
+  top: -3px;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  margin-left: -4px;
+  background: rgb(var(--sky-ink));
+  transition: left 0.16s var(--ease-soft), background-color 0.3s;
+}
+.wing-track u {
+  position: absolute;
+  top: -5px;
+  width: 1px;
+  height: 12px;
+  background: var(--hairline);
+}
+.wing-labels {
+  display: flex;
+  justify-content: space-between;
+  width: 148px;
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.wing-labels span.on { color: rgb(var(--sky-glow)); }
+
+/* --- the flock counter --- */
+.flock { display: flex; align-items: center; gap: 7px; }
+.flock svg { width: 15px; height: 9px; overflow: visible; }
+.flock svg path { fill: rgba(var(--sky-ink) / 0.8); }
+
+/* --- phase banner --- */
+.banner {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 17vh;
+  text-align: center;
+  pointer-events: none;
+}
+.banner-phase {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
+  color: rgba(var(--sky-glow) / 0.9);
+  margin: 0 0 8px;
+  padding-left: 0.42em;
+}
+.banner-line {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 300;
+  font-size: clamp(19px, 2.6vw, 27px);
+  color: rgba(var(--sky-ink) / 0.94);
+  margin: 0;
+  text-shadow: 0 2px 30px rgba(0, 0, 0, 0.55);
+}
+.banner { opacity: 0; transform: translateY(10px); transition: opacity 1.2s var(--ease-soft), transform 1.2s var(--ease); }
+.banner.show { opacity: 1; transform: translateY(0); }
+
+/* --- a transient note: 'wave', 'blue thermal', 'you have the whole sky' --- */
+.note {
+  position: absolute;
+  left: 50%;
+  top: 12vh;
+  transform: translate(-50%, -8px);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: rgb(var(--sky-glow));
+  opacity: 0;
+  transition: opacity 0.6s var(--ease-soft), transform 0.6s var(--ease);
+  white-space: nowrap;
+}
+.note.show { opacity: 1; transform: translate(-50%, 0); }
+
+/* --- the compass strip --- */
+.compass {
+  position: absolute;
+  left: 50%;
+  top: var(--gutter);
+  transform: translateX(-50%);
+  width: min(46vw, 400px);
+  height: 20px;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent);
+}
+.compass-tape { position: absolute; top: 0; height: 100%; white-space: nowrap; }
+.compass-tick {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  color: var(--faint);
+  text-align: center;
+}
+.compass-tick.card { color: rgba(var(--sky-ink) / 0.8); font-size: 10.5px; }
+.compass-tick i { display: block; width: 1px; height: 5px; background: currentColor; margin: 2px auto 0; opacity: 0.6; }
+/* Where the wind is going. Once you can read this you can plan a whole leg. */
+.compass-wind {
+  position: absolute;
+  top: 1px;
+  transform: translateX(-50%);
+  color: rgba(var(--sky-glow) / 0.9);
+  font-size: 11px;
+}
+.compass-centre {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 1px;
+  height: 9px;
+  background: rgb(var(--sky-ink));
+  transform: translateX(-50%);
+}
+
+/* =========================================================================
+   SUMMARY — the postcard at the end of a crossing
+   ========================================================================= */
+
+#summary {
+  display: grid;
+  place-items: center;
+  padding: var(--gutter);
+  background: rgba(var(--sky-deep) / 0.86);
+  backdrop-filter: blur(18px) saturate(0.85);
+  -webkit-backdrop-filter: blur(18px) saturate(0.85);
+  opacity: 0;
+  transition: opacity 1.4s var(--ease-soft);
+  overflow-y: auto;
+}
+#summary.show { opacity: 1; }
+
+.sum-card { width: min(94vw, 860px); }
+
+.sum-head { display: flex; align-items: baseline; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+.sum-title {
+  font-family: var(--serif);
+  font-weight: 300;
+  font-size: clamp(30px, 5vw, 48px);
+  line-height: 1;
+  margin: 0;
+  color: rgb(var(--sky-ink));
+}
+.sum-seed {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.28em;
+  color: rgba(var(--sky-glow) / 0.85);
+  text-transform: uppercase;
+}
+
+/* The route map: a stylised trace of where you actually went, coloured by
+   the air that carried you. It is the only souvenir the game gives you. */
+.sum-map {
+  width: 100%;
+  aspect-ratio: 16 / 7;
+  margin: 22px 0 0;
+  border: 1px solid var(--hairline-soft);
+  background: rgba(var(--sky-deep) / 0.5);
+  display: block;
+}
+
+.sum-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+  gap: 1px;
+  margin: 1px 0 0;
+  background: var(--hairline-soft);
+  border: 1px solid var(--hairline-soft);
+  border-top: 0;
+}
+.sum-stat { background: rgba(var(--sky-deep) / 0.55); padding: 14px 15px; }
+.sum-stat dt {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin: 0 0 5px;
+}
+.sum-stat dd {
+  font-family: var(--mono);
+  font-size: 21px;
+  font-weight: 300;
+  color: rgb(var(--sky-ink));
+  margin: 0;
+}
+.sum-stat dd small { font-size: 0.5em; letter-spacing: 0.16em; color: var(--faint); margin-left: 3px; }
+.sum-stat.hero dd { color: rgb(var(--sky-glow)); }
+
+/* Where your height actually came from — the honest account of a flight. */
+.sum-sources { margin: 20px 0 0; }
+.sum-sources h3 {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin: 0 0 10px;
+  font-weight: 400;
+}
+.sum-bar { display: flex; height: 5px; overflow: hidden; }
+.sum-bar span { height: 100%; transition: width 0.9s var(--ease); }
+.sum-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin: 11px 0 0;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.13em;
+  color: var(--dim);
+}
+.sum-legend b { display: inline-block; width: 7px; height: 7px; margin-right: 6px; vertical-align: 0; }
+
+.sum-verdict {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 300;
+  font-size: clamp(17px, 2.3vw, 22px);
+  line-height: 1.55;
+  color: rgba(var(--sky-ink) / 0.9);
+  margin: 26px 0 0;
+  max-width: 52ch;
+}
+
+.sum-actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 28px 0 0; }
+
+/* --- logbook --- */
+.log-list { margin: 20px 0 0; border-top: 1px solid var(--hairline-soft); }
+.log-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  gap: 14px;
+  align-items: baseline;
+  padding: 10px 2px;
+  border-bottom: 1px solid var(--hairline-soft);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: 0.08em;
+  color: var(--dim);
+}
+.log-row b { color: rgb(var(--sky-ink)); font-weight: 500; letter-spacing: 0.2em; }
+.log-row .badge { color: rgb(var(--sky-glow)); font-size: 9.5px; letter-spacing: 0.2em; }
+.log-empty { font-family: var(--mono); font-size: 11px; color: var(--faint); padding: 18px 0; letter-spacing: 0.12em; }
+
+/* =========================================================================
+   MISC
+   ========================================================================= */
+
+/* Touch: the floating stick's visual echo. */
+.stick {
+  position: absolute;
+  width: 96px;
+  height: 96px;
+  margin: -48px 0 0 -48px;
+  border: 1px solid rgba(var(--sky-ink) / 0.2);
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.22s;
+}
+.stick.on { opacity: 1; }
+.stick i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 26px;
+  height: 26px;
+  margin: -13px 0 0 -13px;
+  border-radius: 50%;
+  background: rgba(var(--sky-ink) / 0.22);
+  border: 1px solid rgba(var(--sky-ink) / 0.4);
+}
+
+.touch-btns { position: absolute; right: var(--gutter); bottom: calc(var(--gutter) + 74px); display: grid; gap: 9px; }
+.touch-btn {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 1px solid var(--hairline);
+  background: rgba(var(--sky-deep) / 0.42);
+  color: rgba(var(--sky-ink) / 0.85);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+/* The controls card on the title screen. */
+.keys {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 5px 14px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  color: var(--dim);
+  margin: 26px 0 0;
+  max-width: 380px;
+}
+.keys kbd {
+  font: inherit;
+  color: rgb(var(--sky-ink));
+  border: 1px solid var(--hairline);
+  padding: 2px 7px;
+  white-space: nowrap;
+}
+.keys span { color: var(--faint); }
+
+/* A quiet corner readout for the frame budget, toggled with F3. */
+.perf {
+  position: absolute;
+  left: var(--gutter);
+  bottom: calc(var(--gutter) + 96px);
+  font-family: var(--mono);
+  font-size: 10px;
+  line-height: 1.5;
+  letter-spacing: 0.08em;
+  color: var(--faint);
+  white-space: pre;
+}
+
+/* Full-screen colour wash used for the landing fade and the launch reveal. */
+.wash {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+  background: rgb(var(--sky-deep));
+  opacity: 0;
+  transition: opacity 1.6s var(--ease-soft);
+}
+.wash.on { opacity: 1; }
+
+@media (max-width: 700px) {
+  :root { --gutter: 14px; }
+  .vario { height: 34vh; width: 38px; }
+  .compass { width: 68vw; }
+  .readout-value { font-size: 25px; }
+  .title-block { margin-left: 0; }
+  .keys { display: none; }
+  .sum-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.12s !important;
+  }
+}

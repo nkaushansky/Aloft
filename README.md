@@ -1,5 +1,24 @@
 # Aloft
 
+Two games now live in this repo, sharing one idea.
+
+| | |
+| --- | --- |
+| **`/` (this project)** | **Aloft** — a serene, low-poly gliding game. Calm, gentle, zen. Phases 0–4. |
+| **[`/crossing`](crossing/)** | **Aloft — The Crossing** — a reimagining. Same keystone equation, seven kinds of air, one day to cross a continent. |
+
+The shared idea is one line from the design doc below: *lift is the only
+source of new energy — found in the world, never made by the stick.* Aloft
+proves it feels good. The Crossing takes it literally and builds the whole
+atmosphere: thermals that drift and tilt and die, ridge lift, mountain wave,
+rotor, convergence lines, sink — all visible, all sourced from the terrain and
+the sun, under a day that is itself the difficulty curve. See
+[`crossing/docs/design-doc.html`](crossing/docs/design-doc.html).
+
+---
+
+## Aloft (the original)
+
 A serene, low-poly browser gliding game about reading the air and staying up.
 The tone for everything: **calm, gentle, zen** (see `CLAUDE.md`).
 

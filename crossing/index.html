@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#0b1220" />
+<title>Aloft — The Crossing</title>
+<meta name="description" content="Fly one day across a living sky. Read the air, ride the wave, reach the night." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300&family=Spline+Sans+Mono:wght@300;400;500&family=Karla:wght@300;400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="./src/ui/styles.css" />
+</head>
+<body>
+  <div id="app"></div>
+
+  <div id="boot">
+    <div class="boot-inner">
+      <svg class="boot-mark" viewBox="0 0 120 60" aria-hidden="true">
+        <path class="bm-path" d="M4,46 C26,44 34,20 60,14 C86,20 94,44 116,46" />
+        <path class="bm-wing" d="M52,20 l10,-5 l-2,6 l11,-2 l-13,6 l-2,-4 z" />
+      </svg>
+      <h1 class="boot-title">Aloft</h1>
+      <p class="boot-sub">The Crossing</p>
+      <div class="boot-bar"><i></i></div>
+      <p class="boot-note" id="boot-note">building the sky</p>
+    </div>
+  </div>
+
+  <noscript>
+    <div style="position:fixed;inset:0;display:grid;place-items:center;background:#0b1220;color:#dfe7f2;font-family:system-ui,sans-serif;">
+      Aloft needs JavaScript and WebGL2.
+    </div>
+  </noscript>
+
+  <script type="module" src="./src/main.ts"></script>
+</body>
+</html>

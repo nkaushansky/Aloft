@@ -1,0 +1,24 @@
+{
+  "name": "aloft-crossing",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Aloft — The Crossing. Fly one day across a living sky.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "preview": "vite preview --port 4173",
+    "test:sim": "esbuild tools/simcheck.ts --bundle --platform=node --format=esm --outfile=node_modules/.cache/simcheck.mjs --log-level=error && node node_modules/.cache/simcheck.mjs",
+    "shots": "node tools/shoot.mjs shots"
+  },
+  "dependencies": {
+    "three": "0.165.0"
+  },
+  "devDependencies": {
+    "@types/three": "0.165.0",
+    "playwright-core": "^1.61.1",
+    "typescript": "^5.4.5",
+    "vite": "^5.2.0"
+  }
+}

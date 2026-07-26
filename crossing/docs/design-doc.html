@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aloft — The Crossing · Design Doc</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300&family=Karla:wght@300;400;500;600;700&family=Spline+Sans+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --night:#0a0f1a;         /* the deep of the page */
+    --night-2:#0e1626;
+    --card:#121b2c;
+    --card-edge:#1e2b42;
+    --ink:#dbe4f2;
+    --ink-soft:#9daec8;
+    --ink-faint:#6b7d99;
+    --gold:#e8b166;          /* the sun, lift, warmth */
+    --gold-deep:#c48a3f;
+    --cyan:#8fd4e0;          /* wave — the cold, smooth, high air */
+    --green:#a8c98a;         /* ridge */
+    --violet:#b09ad0;        /* rotor */
+    --pink:#e5a8b8;          /* convergence */
+    --blue:#6f92bd;          /* sink */
+    --rule:#22304a;
+    --measure:70ch;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(1200px 600px at 78% -6%, rgba(232,177,102,.09), transparent 62%),
+      radial-gradient(900px 700px at 8% 4%, rgba(143,212,224,.06), transparent 60%),
+      linear-gradient(180deg,var(--night) 0%,var(--night-2) 55%,var(--night) 100%);
+    background-attachment:fixed;
+    color:var(--ink);
+    font-family:"Karla",system-ui,sans-serif;
+    font-size:17px;line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:900px;margin:0 auto;padding:0 26px 130px;}
+
+  /* ---------------- hero ---------------- */
+  .hero{padding:78px 0 26px;}
+  .eyebrow{
+    font-family:"Spline Sans Mono",monospace;font-size:11.5px;
+    letter-spacing:.32em;text-transform:uppercase;color:var(--gold);
+    margin:0 0 18px;
+  }
+  h1{
+    font-family:"Fraunces",serif;font-weight:300;
+    font-size:clamp(50px,10vw,96px);line-height:.94;letter-spacing:-.014em;
+    margin:0;color:#f0f5ff;
+  }
+  h1 em{font-style:italic;font-weight:300;color:var(--gold);}
+  .thesis{
+    font-family:"Fraunces",serif;font-weight:300;font-style:italic;
+    font-size:clamp(20px,2.7vw,26px);line-height:1.45;
+    color:var(--ink-soft);max-width:44ch;margin:26px 0 0;
+  }
+  .meta{
+    display:flex;flex-wrap:wrap;gap:8px 22px;align-items:center;
+    font-family:"Spline Sans Mono",monospace;font-size:11.5px;color:var(--ink-faint);
+    border-top:1px solid var(--rule);margin-top:34px;padding-top:16px;
+    letter-spacing:.06em;
+  }
+  .meta b{color:var(--gold);font-weight:400;}
+
+  /* ---------------- sections ---------------- */
+  section{padding:46px 0 4px;}
+  .sec-label{
+    font-family:"Spline Sans Mono",monospace;font-size:11.5px;
+    letter-spacing:.28em;text-transform:uppercase;color:var(--gold-deep);margin:0 0 8px;
+  }
+  h2{
+    font-family:"Fraunces",serif;font-weight:300;
+    font-size:clamp(28px,4.6vw,40px);line-height:1.1;letter-spacing:-.012em;
+    color:#eef3fc;margin:0 0 20px;
+  }
+  h3{
+    font-family:"Karla",sans-serif;font-weight:700;font-size:16px;
+    letter-spacing:.02em;color:var(--ink);margin:30px 0 7px;
+  }
+  p{margin:0 0 17px;max-width:var(--measure);}
+  .lead{font-size:18.5px;color:var(--ink);}
+  strong{color:#f2f6ff;font-weight:600;}
+  em{color:var(--ink-soft);}
+  a{color:var(--gold);text-decoration:none;border-bottom:1px solid rgba(232,177,102,.35);}
+  a:hover{border-color:var(--gold);}
+  code{font-family:"Spline Sans Mono",monospace;font-size:.88em;color:var(--cyan);
+       background:rgba(143,212,224,.08);padding:1px 6px;border-radius:3px;}
+  hr{height:1px;background:var(--rule);border:0;margin:42px 0 0;}
+
+  ul{margin:0 0 17px;padding:0;max-width:var(--measure);list-style:none;}
+  li{position:relative;padding:0 0 0 24px;margin:0 0 11px;}
+  li::before{content:"";position:absolute;left:2px;top:11px;width:6px;height:6px;
+             border-radius:50%;background:var(--gold-deep);}
+  li.cut::before{background:var(--blue);}
+
+  /* ---------------- keystone ---------------- */
+  .keystone{
+    background:linear-gradient(135deg,rgba(232,177,102,.11),rgba(143,212,224,.06));
+    border:1px solid rgba(232,177,102,.24);
+    border-radius:3px;padding:32px 34px;margin:6px 0 24px;max-width:var(--measure);
+  }
+  .keystone .eq{
+    font-family:"Fraunces",serif;font-style:italic;font-weight:300;
+    font-size:clamp(22px,3.6vw,32px);line-height:1.32;margin:0;color:#fff;
+  }
+  .keystone .eq span{color:var(--gold);font-style:normal;}
+  .keystone small{display:block;margin-top:14px;font-family:"Spline Sans Mono",monospace;
+                  font-size:11.5px;color:var(--ink-faint);letter-spacing:.05em;}
+
+  /* ---------------- the air diagram ---------------- */
+  figure{margin:8px 0 30px;}
+  .diagram{width:100%;height:auto;display:block;background:transparent;overflow:visible;}
+  .dg-sky{fill:url(#skyGrad);}
+  .dg-ground{fill:#1a2334;stroke:#2c3b56;stroke-width:1;}
+  .dg-sea{fill:#152238;}
+  .dg-lbl{font-family:"Spline Sans Mono",monospace;font-size:10px;letter-spacing:.12em;
+          text-transform:uppercase;fill:var(--ink-faint);}
+  .dg-lbl.on{fill:var(--ink-soft);}
+  .dg-cap{font-family:"Karla",sans-serif;font-size:10.5px;fill:var(--ink-faint);}
+  .cloud{fill:#c9d6e8;}
+  .cloud.dark{fill:#8fa2bd;}
+  .lent{fill:#b9cfdc;}
+  .rotorc{fill:#6d7b96;}
+  figcaption{font-family:"Spline Sans Mono",monospace;font-size:11px;color:var(--ink-faint);
+             letter-spacing:.08em;margin-top:10px;max-width:var(--measure);line-height:1.6;}
+
+  /* ---------------- the seven airs ---------------- */
+  .airs{display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule);margin:6px 0 24px;}
+  .air{
+    background:var(--card);padding:18px 22px;
+    display:grid;grid-template-columns:auto 1fr;gap:0 18px;align-items:start;
+  }
+  .air .swatch{width:4px;height:100%;min-height:44px;border-radius:2px;grid-row:1 / span 3;}
+  .air h4{margin:0 0 2px;font-family:"Fraunces",serif;font-weight:400;font-size:20px;color:#f0f5ff;}
+  .air .src{font-family:"Spline Sans Mono",monospace;font-size:10.5px;letter-spacing:.14em;
+            text-transform:uppercase;color:var(--ink-faint);margin:0 0 7px;}
+  .air p{margin:0;font-size:15px;color:var(--ink-soft);max-width:none;}
+  .air .see{display:block;margin-top:6px;font-size:14px;color:var(--ink-faint);font-style:italic;}
+
+  /* ---------------- day timeline ---------------- */
+  .day{margin:10px 0 26px;}
+  .day-track{position:relative;height:78px;border-left:1px solid var(--rule);border-right:1px solid var(--rule);}
+  .day-band{position:absolute;top:0;bottom:0;}
+  .day-lift{position:absolute;left:0;right:0;bottom:0;height:100%;}
+  .day-marks{display:grid;grid-template-columns:repeat(6,1fr);gap:0;margin-top:10px;}
+  .day-mark{border-top:1px solid var(--rule);padding:9px 10px 0 0;}
+  .day-mark b{display:block;font-family:"Spline Sans Mono",monospace;font-size:10.5px;
+              letter-spacing:.18em;text-transform:uppercase;color:var(--gold);margin-bottom:5px;}
+  .day-mark span{font-size:13px;color:var(--ink-soft);line-height:1.5;display:block;}
+
+  /* ---------------- cards ---------------- */
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1px;
+         background:var(--rule);border:1px solid var(--rule);margin:6px 0 22px;}
+  .card{background:var(--card);padding:20px 22px;}
+  .card h4{margin:0 0 7px;font-family:"Karla",sans-serif;font-weight:700;font-size:14.5px;color:#eef3fc;}
+  .card p{margin:0;font-size:14.5px;color:var(--ink-soft);max-width:none;}
+
+  /* ---------------- gates ---------------- */
+  .gate{display:grid;grid-template-columns:auto 1fr;gap:22px;padding:19px 0;
+        border-top:1px solid var(--rule);max-width:var(--measure);}
+  .gate:last-of-type{border-bottom:1px solid var(--rule);}
+  .gate .ph{font-family:"Fraunces",serif;font-weight:400;font-size:30px;color:var(--gold-deep);line-height:1;padding-top:3px;}
+  .gate h3{margin:0 0 5px;}
+  .gate p{margin:0;font-size:15px;color:var(--ink-soft);}
+  .gate .ask{display:block;margin-top:8px;font-family:"Spline Sans Mono",monospace;font-size:12px;color:var(--cyan);}
+  .gate .ask::before{content:"gate ▸ ";color:var(--gold-deep);}
+  .gate.done .ph{color:var(--green);}
+
+  .lot{background:var(--card);border:1px dashed var(--card-edge);border-radius:3px;
+       padding:22px 26px;max-width:var(--measure);}
+  .lot p{margin:0 0 12px;font-size:15px;color:var(--ink-soft);}
+  .lot p:last-child{margin:0;}
+  .tag{font-family:"Spline Sans Mono",monospace;font-size:10.5px;color:var(--gold-deep);
+       letter-spacing:.14em;text-transform:uppercase;}
+
+  footer{margin-top:70px;padding-top:22px;border-top:1px solid var(--rule);
+         font-family:"Spline Sans Mono",monospace;font-size:11px;color:var(--ink-faint);letter-spacing:.06em;}
+
+  @media (max-width:620px){
+    body{font-size:16px;}
+    .wrap{padding:0 18px 90px;}
+    .gate{grid-template-columns:1fr;gap:4px;}
+    .day-marks{grid-template-columns:repeat(2,1fr);}
+    .air{grid-template-columns:auto 1fr;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <p class="eyebrow">Aloft · a reimagining · living design doc</p>
+    <h1>The Crossing<em>.</em></h1>
+    <p class="thesis">Every flight game treats air as empty space. This one makes the atmosphere a place you can see, read, and learn — and then gives you exactly one day to cross it.</p>
+
+    <figure>
+      <svg class="diagram" viewBox="0 0 1000 430" role="img"
+           aria-label="A cross-section of the atmosphere over a coastline and a mountain range, showing seven kinds of air: convergence over the coast, thermals over sun-baked flats, ridge lift on the windward face, sink in the lee, rotor turbulence, and a standing mountain wave marked by lenticular clouds.">
+        <defs>
+          <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#0d1830"/>
+            <stop offset="65%" stop-color="#16233c"/>
+            <stop offset="100%" stop-color="#243149"/>
+          </linearGradient>
+          <marker id="ar" viewBox="0 0 8 8" refX="6" refY="4" markerWidth="5" markerHeight="5" orient="auto">
+            <path d="M0,0 L8,4 L0,8 z" fill="context-stroke"/>
+          </marker>
+        </defs>
+
+        <rect class="dg-sky" x="0" y="0" width="1000" height="392"/>
+
+        <!-- prevailing wind -->
+        <g stroke="#41536f" stroke-width="1.2" marker-end="url(#ar)" opacity=".75">
+          <line x1="18" y1="46" x2="118" y2="46"/>
+          <line x1="18" y1="72" x2="98" y2="72"/>
+        </g>
+        <text class="dg-lbl" x="132" y="50">prevailing wind</text>
+
+        <!-- ground -->
+        <path class="dg-ground" d="M0,392 L86,390 C150,388 190,382 232,352 C272,322 296,214 342,186
+                                    C378,164 398,224 428,262 C458,300 492,338 552,356
+                                    C612,374 656,366 706,370 C766,375 826,381 906,383 L1000,385
+                                    L1000,430 L0,430 Z"/>
+        <rect class="dg-sea" x="0" y="382" width="88" height="12"/>
+        <text class="dg-lbl" x="10" y="410">sea</text>
+
+        <!-- CONVERGENCE: sea-breeze front pushing inland over the coast -->
+        <g stroke="#e5a8b8" stroke-width="1.3" opacity=".9">
+          <line x1="118" y1="368" x2="118" y2="252" marker-end="url(#ar)"/>
+          <line x1="132" y1="372" x2="132" y2="276" marker-end="url(#ar)" opacity=".6"/>
+          <line x1="104" y1="374" x2="104" y2="284" marker-end="url(#ar)" opacity=".6"/>
+        </g>
+        <g class="cloud" opacity=".85">
+          <ellipse cx="104" cy="240" rx="21" ry="8"/><ellipse cx="126" cy="236" rx="25" ry="9"/>
+          <ellipse cx="150" cy="240" rx="19" ry="7"/><ellipse cx="172" cy="238" rx="22" ry="8"/>
+          <ellipse cx="196" cy="241" rx="17" ry="6"/>
+        </g>
+        <text class="dg-lbl on" x="96" y="222" fill="#e5a8b8">convergence</text>
+        <text class="dg-cap" x="96" y="264">fly the line straight</text>
+
+        <!-- THERMAL over sun-baked ground, tilted downwind, capped with cumulus -->
+        <g stroke="#e8b166" stroke-width="1.4">
+          <path d="M690,368 C700,330 712,300 726,268" marker-end="url(#ar)"/>
+          <path d="M714,372 C724,336 736,306 750,272" marker-end="url(#ar)" opacity=".55"/>
+          <path d="M666,370 C676,334 688,304 702,272" marker-end="url(#ar)" opacity=".55"/>
+        </g>
+        <g class="cloud">
+          <ellipse cx="704" cy="250" rx="26" ry="14"/><ellipse cx="730" cy="244" rx="30" ry="17"/>
+          <ellipse cx="754" cy="252" rx="22" ry="12"/>
+          <rect x="678" y="256" width="98" height="4" rx="2" class="cloud dark"/>
+        </g>
+        <text class="dg-lbl on" x="668" y="226" fill="#e8b166">thermal</text>
+        <text class="dg-cap" x="668" y="300">circle · drift with it</text>
+        <text class="dg-cap" x="668" y="392">sun-baked ground</text>
+
+        <!-- RIDGE LIFT on the windward face -->
+        <g stroke="#a8c98a" stroke-width="1.4">
+          <path d="M248,344 L276,306" marker-end="url(#ar)"/>
+          <path d="M278,318 L304,276" marker-end="url(#ar)"/>
+          <path d="M306,286 L330,244" marker-end="url(#ar)"/>
+        </g>
+        <text class="dg-lbl on" x="212" y="292" fill="#a8c98a">ridge lift</text>
+        <text class="dg-cap" x="196" y="316">beat along the face</text>
+
+        <!-- SINK in the lee -->
+        <g stroke="#6f92bd" stroke-width="1.3" opacity=".85">
+          <line x1="432" y1="212" x2="432" y2="286" marker-end="url(#ar)"/>
+          <line x1="454" y1="228" x2="454" y2="300" marker-end="url(#ar)" opacity=".6"/>
+          <line x1="412" y1="230" x2="412" y2="298" marker-end="url(#ar)" opacity=".6"/>
+        </g>
+        <text class="dg-lbl on" x="404" y="200" fill="#6f92bd">sink</text>
+        <text class="dg-cap" x="392" y="320">tuck · cross it fast</text>
+
+        <!-- ROTOR: torn tumbling cloud under the wave -->
+        <g class="rotorc" opacity=".9">
+          <ellipse cx="500" cy="322" rx="17" ry="9"/><ellipse cx="522" cy="330" rx="13" ry="7"/>
+          <ellipse cx="482" cy="332" rx="12" ry="6"/><ellipse cx="540" cy="322" rx="15" ry="8"/>
+          <ellipse cx="558" cy="332" rx="10" ry="5"/>
+        </g>
+        <g stroke="#b09ad0" stroke-width="1.1" fill="none" opacity=".9">
+          <path d="M492,346 a9,9 0 1,1 9,-9" marker-end="url(#ar)"/>
+          <path d="M534,348 a8,8 0 1,0 -8,-8" marker-end="url(#ar)"/>
+        </g>
+        <text class="dg-lbl on" x="486" y="366" fill="#b09ad0">rotor</text>
+
+        <!-- MOUNTAIN WAVE: the standing train, with lenticulars that do not move -->
+        <path d="M370,150 C420,84 470,84 520,150 C570,216 620,216 670,150
+                 C720,84 770,84 820,150 C870,216 916,208 958,166"
+              fill="none" stroke="#8fd4e0" stroke-width="1.5" opacity=".95"/>
+        <g stroke="#8fd4e0" stroke-width="1.2" opacity=".85">
+          <line x1="430" y1="150" x2="430" y2="100" marker-end="url(#ar)"/>
+          <line x1="580" y1="150" x2="580" y2="106" marker-end="url(#ar)"/>
+          <line x1="730" y1="152" x2="730" y2="112" marker-end="url(#ar)"/>
+        </g>
+        <g class="lent">
+          <ellipse cx="432" cy="76" rx="52" ry="9"/>
+          <ellipse cx="432" cy="60" rx="36" ry="6.5" opacity=".8"/>
+          <ellipse cx="432" cy="47" rx="22" ry="4.5" opacity=".55"/>
+          <ellipse cx="582" cy="88" rx="44" ry="8"/>
+          <ellipse cx="582" cy="73" rx="29" ry="5.5" opacity=".7"/>
+          <ellipse cx="732" cy="98" rx="34" ry="6.5" opacity=".8"/>
+        </g>
+        <text class="dg-lbl on" x="378" y="34" fill="#8fd4e0">mountain wave</text>
+        <text class="dg-cap" x="378" y="126">smooth · silent · reaches the stars</text>
+        <text class="dg-cap" x="612" y="52">lenticulars hang perfectly still</text>
+
+        <!-- altitude scale -->
+        <line x1="978" y1="30" x2="978" y2="386" stroke="#22304a" stroke-width="1"/>
+        <g class="dg-lbl">
+          <text x="936" y="34">7 km</text>
+          <text x="940" y="152">3 km</text>
+          <text x="944" y="264">1 km</text>
+          <text x="948" y="390">0</text>
+        </g>
+      </svg>
+      <figcaption>One frame of the sim, drawn honestly. Nothing here is placed by hand — the wave exists because the range is long and across the wind, the thermals exist because that ground is dry and the sun has been on it for four hours, and the sink exists because all of that air has to come back down somewhere.</figcaption>
+    </figure>
+
+    <div class="meta">
+      <span>v<b>1.0</b></span>
+      <span>built <b>Jul 2026</b></span>
+      <span>status <b>playable</b></span>
+      <span>ancestor <b>Aloft (phases 0–4)</b></span>
+    </div>
+  </header>
+
+  <!-- WHAT SURVIVED -->
+  <section>
+    <p class="sec-label">The inheritance</p>
+    <h2>One line in the old design doc was worth the whole rewrite</h2>
+    <p class="lead">Aloft's Q5 settled a fork about how you regain altitude, and the winning argument was this: <em>the pump spends energy well but can't create it; the cape's bounce could, and net-positive energy from the stick alone would make the world optional, which fights the whole fantasy.</em></p>
+    <p>That is a much bigger idea than a control decision. It says the sky is not a backdrop you fly in front of — it is the only economy in the game, and the terrain underneath is its map. The original shipped two-sevenths of that idea (thermals and ridge lift) and drew the air as a hundred and forty line segments. <strong>The Crossing takes the constraint literally and builds the whole atmosphere.</strong></p>
+
+    <div class="keystone">
+      <p class="eq">total energy <span>=</span> altitude <span>+</span> airspeed<br>— bleeding to drag, restored only by air you found</p>
+      <small>unchanged from Aloft phase 0. everything below is what happens when you take it seriously</small>
+    </div>
+
+    <h3>Kept, because it was right</h3>
+    <ul>
+      <li><strong>The keystone equation</strong>, and the rule that the stick can never make energy.</li>
+      <li><strong>Provider interfaces.</strong> <code>TerrainProvider</code>, <code>BiomeProvider</code>, <code>WindField</code> — the flight model still never learns where the ground or the air came from.</li>
+      <li><strong><code>src/sim/</code> is pure.</strong> No Three.js, no DOM. Feel stays testable and renderer-independent.</li>
+      <li><strong>A seed is a map.</strong> Deterministic worlds; the Logbook records the seed of every crossing, so a good day is an address you can fly back to. <code>?seed=GLASSWING</code> in the URL shares a sky.</li>
+      <li><strong>Fixed 60 Hz sim, interpolated render.</strong></li>
+      <li><strong>Every feel constant in one commented file</strong>, described in terms of what raising it does to the experience.</li>
+    </ul>
+
+    <h3>Deliberately broken</h3>
+    <ul>
+      <li class="cut"><strong>Calm, gentle, zen → sublime.</strong> The old tone was a real achievement and it is the wrong tone for this. The Crossing is after awe and scale: a day that turns, air that can genuinely frighten you, and a night you have to earn. There is still no fail state and no punishment — but there are stakes now, and they come from the sun going down.</li>
+      <li class="cut"><strong>A bounded valley → an infinite streamed continent.</strong> Q3 called "start bounded, don't preclude streaming". Streaming arrived.</li>
+      <li class="cut"><strong>Two kinds of lift → seven.</strong></li>
+      <li class="cut"><strong>The sandbox → a run.</strong> Q2 built the toy first and left room for an arc on top. The arc is the day.</li>
+    </ul>
+  </section>
+  <hr>
+
+  <!-- THE SEVEN AIRS -->
+  <section>
+    <p class="sec-label">The air</p>
+    <h2>Seven kinds, none of them sprinkled on</h2>
+    <p class="lead">Every one of these is a real thing a sailplane pilot learns to find, and every one is derived at runtime from the terrain, the sun and the wind rather than placed by a designer. Move the range and the wave moves. Shade the ground and the thermal dies.</p>
+
+    <div class="airs">
+      <div class="air"><i class="swatch" style="background:var(--gold)"></i><div>
+        <h4>Thermal</h4><p class="src">source · sun-baked ground</p>
+        <p>A rising column over ground that has banked the sun's heat. It <strong>drifts downwind</strong> while its source stays put, and it <strong>leans</strong> with height — so you cannot hover over the hot spot, you have to travel with the climb. There is a ring of sink around every core, which is what makes centring feel like threading a needle.
+        <span class="see">You see it as: gold ribbons spiralling, and a cumulus with a flat dark base. When the cumulus goes ragged, the lift under it has already gone.</span></p>
+      </div></div>
+
+      <div class="air"><i class="swatch" style="background:var(--green)"></i><div>
+        <h4>Ridge lift</h4><p class="src">source · wind meeting a slope</p>
+        <p>Wind deflected up a windward face. Weak, but it does not need the sun, which makes it the only thing working at dawn and one of only two things working at night. The lee of the same hill is sink.
+        <span class="see">You see it as: a whole hillside of trees leaning, and pale ribbons hugging the slope. The trees tell you which face is windward from two kilometres out.</span></p>
+      </div></div>
+
+      <div class="air"><i class="swatch" style="background:var(--cyan)"></i><div>
+        <h4>Mountain wave</h4><p class="src">source · a long ridge across the wind</p>
+        <p>The endgame. Stable air crossing a big range bounces in a standing train of waves that reaches far higher than any thermal, is <strong>perfectly smooth</strong>, and gets <em>stronger</em> as the day cools. Real pilots have taken sailplanes past 50,000 feet in it. Finding it is like discovering there was an elevator the whole time.
+        <span class="see">You see it as: lenticular clouds that <strong>do not move</strong> while the entire rest of the sky streams past them. Nothing else in the game looks like that.</span></p>
+      </div></div>
+
+      <div class="air"><i class="swatch" style="background:var(--violet)"></i><div>
+        <h4>Rotor</h4><p class="src">source · underneath the wave</p>
+        <p>The tumbling, violent air beneath the wave crests, and usually the only way up into them. The toll. It is genuinely alarming — the camera shakes, the wing shudders, the audio roughens — and it is never a fail state.
+        <span class="see">You see it as: a torn, dark, visibly rotating line of cloud below the lenticulars. A warning label on a doorway.</span></p>
+      </div></div>
+
+      <div class="air"><i class="swatch" style="background:var(--pink)"></i><div>
+        <h4>Convergence</h4><p class="src">source · two air masses meeting</p>
+        <p>A sea breeze pushing inland; a valley exhaling. A long line of steady lift you fly <strong>straight down</strong> instead of circling in — by far the fastest travel in the game, and the reason the afternoon is the best air of the day.
+        <span class="see">You see it as: a cloud street running to the horizon. Once you spot one, the next fifty kilometres are free.</span></p>
+      </div></div>
+
+      <div class="air"><i class="swatch" style="background:var(--blue)"></i><div>
+        <h4>Sink</h4><p class="src">source · everything above</p>
+        <p>All that rising air has to come back down. Between the good stuff, in the lee of every ridge, and in a ring around every thermal. It is the price, and managing it is most of what separates a long crossing from a short one.
+        <span class="see">You see it as: dark ribbons falling. The correct response is to tuck and get out fast, which is the whole point of the tuck.</span></p>
+      </div></div>
+
+      <div class="air"><i class="swatch" style="background:#4b5a74"></i><div>
+        <h4>Still</h4><p class="src">source · —</p>
+        <p>Nothing much. You glide, and you spend height at about one metre for every thirteen you travel. Most of a crossing is this, and that is correct — the good air has to be worth finding.
+        <span class="see">You see it as: almost nothing. The absence is information.</span></p>
+      </div></div>
+    </div>
+  </section>
+  <hr>
+
+  <!-- THE DAY -->
+  <section>
+    <p class="sec-label">Structure</p>
+    <h2>A run is one day, and the day is the difficulty curve</h2>
+    <p class="lead">There is no difficulty setting and no enemy. The sun rises, bakes the ground, and sets — and because every thermal in the world is powered by ground heat that <em>lags</em> the sun by a couple of hours, the game hands you a perfectly shaped arc for free. It gives you the best air halfway through and then takes it away.</p>
+
+    <div class="day">
+      <div class="day-track" aria-hidden="true">
+        <svg viewBox="0 0 600 78" preserveAspectRatio="none" style="width:100%;height:100%;display:block">
+          <defs>
+            <linearGradient id="dayg" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%"   stop-color="#1b2740"/>
+              <stop offset="9%"   stop-color="#5b4a66"/>
+              <stop offset="15%"  stop-color="#c8814a"/>
+              <stop offset="30%"  stop-color="#7fa8cc"/>
+              <stop offset="46%"  stop-color="#a8c6e0"/>
+              <stop offset="62%"  stop-color="#d9b273"/>
+              <stop offset="77%"  stop-color="#d2803f"/>
+              <stop offset="86%"  stop-color="#5d4f74"/>
+              <stop offset="94%"  stop-color="#1d2440"/>
+              <stop offset="100%" stop-color="#121a30"/>
+            </linearGradient>
+          </defs>
+          <rect x="0" y="0" width="600" height="78" fill="url(#dayg)" opacity=".55"/>
+          <!-- thermal activity: lags the sun, peaks mid-afternoon, gone by dusk -->
+          <path d="M0,78 L60,78 C110,74 150,40 210,26 C270,13 320,8 350,10
+                   C400,14 430,30 470,54 C500,72 520,78 540,78 L600,78 Z"
+                fill="#e8b166" opacity=".34"/>
+          <path d="M0,78 L60,78 C110,74 150,40 210,26 C270,13 320,8 350,10
+                   C400,14 430,30 470,54 C500,72 520,78 540,78"
+                fill="none" stroke="#e8b166" stroke-width="1.4"/>
+          <!-- wave: always available, and strongest at night -->
+          <path d="M0,64 C120,62 240,62 360,58 C440,55 500,44 600,34"
+                fill="none" stroke="#8fd4e0" stroke-width="1.4" stroke-dasharray="4 4"/>
+        </svg>
+      </div>
+      <div class="day-marks">
+        <div class="day-mark"><b>Dawn</b><span>Cold ground, no thermals. Ridge lift only, and you are spending the height you launched with. Mist in the valleys.</span></div>
+        <div class="day-mark"><b>Morning</b><span>The first columns switch on — wide, gentle, forgiving. Cumulus starts popping. The easiest flying of the day.</span></div>
+        <div class="day-mark"><b>Noon</b><span>Narrow, violent, high. Hard sink between. Over the desert the thermals go <em>blue</em> — no cloud marks them and you have to feel for them.</span></div>
+        <div class="day-mark"><b>Afternoon</b><span>The peak. Convection organises into <strong>cloud streets</strong> you can run in a straight line. This is when a crossing gets long.</span></div>
+        <div class="day-mark"><b>Evening</b><span>The thermals die from the ground up. Golden, glassy, and quietly desperate. Get high, or start looking for somewhere to put down.</span></div>
+        <div class="day-mark"><b>Night</b><span>No thermals at all. Only ridge — and <strong>wave</strong>, which is now stronger than it was all day. Aurora, stars, silence.</span></div>
+      </div>
+    </div>
+
+    <p>The shape of that gold curve is the whole game design. It is not a difficulty ramp someone tuned; it is what happens when you model ground heat with a lag and let the consequences fall out. <strong>Reaching the night is the mastery moment</strong> — it means you found wave before the sun quit on you.</p>
+  </section>
+  <hr>
+
+  <!-- THE SKILL LAYER -->
+  <section>
+    <p class="sec-label">The hands</p>
+    <h2>Two more buttons, and they are the same physics as the wings</h2>
+    <p class="lead">Aloft had pitch and roll. The Crossing adds <strong>tuck</strong> and <strong>spread</strong> — and because they are analog, a gamepad's triggers give you a continuously feathered wing.</p>
+
+    <div class="cards">
+      <div class="card"><h4>Tuck</h4><p>Wings swept back, span visibly shorter, the animal narrowed into a dart. Much less drag, much less lift, a far higher top speed. This is how you cross sink without bleeding out, and how a long glide between thermals stops being a slow bath in descending air.</p></div>
+      <div class="card"><h4>Spread</h4><p>Wings out full, primaries splayed, tail fanned. More lift, more drag, slower, and a much tighter turn. This is how you core a narrow noon thermal that a cruising wing would fall straight out of.</p></div>
+      <div class="card"><h4>Why it isn't free</h4><p><strong>Induced drag.</strong> A wing working hard in a steep bank costs energy in proportion to the square of its load. Without that term, spread would be strictly better and the whole layer would collapse into "always hold one button".</p></div>
+      <div class="card"><h4>What it really is</h4><p>Speed-to-fly — the oldest idea in cross-country soaring: <em>fast through sink, slow through lift</em>. The HUD shows a small bug on the speed scale suggesting the speed the air you are in actually wants. Chasing it is the single best teaching tool in the game.</p></div>
+    </div>
+
+    <p>The bird's silhouette does all the communicating. From behind, at a glance, a tucked bird and a spread bird are unmistakably different animals — which means the skill layer is legible without a single icon.</p>
+  </section>
+  <hr>
+
+  <!-- THE FLOCK -->
+  <section>
+    <p class="sec-label">Company</p>
+    <h2>The flock is the score, the tutorial, and the ending</h2>
+    <p class="lead">Companions join when you climb well. There is no points counter, because you are flying inside the counter.</p>
+    <ul>
+      <li><strong>The score, made visible.</strong> Roughly one bird per 130 m of climb. By late afternoon a good flight is flying in a crowd, and you can feel how well you are doing without reading anything.</li>
+      <li><strong>The best wind-tell in the game.</strong> Companions sample the actual wind field ahead of themselves and steer toward rising air. Following the flock into a thermal is simultaneously the tutorial for a new player and a genuine shortcut for an expert. When the player banks hard for long enough, they break out of formation into a rotating thermalling gaggle at staggered altitudes — which is exactly what real birds do and looks extraordinary.</li>
+      <li><strong>The ending.</strong> Between dusk and nightfall they peel away one at a time to roost. Not all at once — a slow drip, over minutes. By the time the stars are out you are alone in the wave with the aurora, and the game has said something it never had to write down.</li>
+    </ul>
+    <p>Multiplayer stays out, as it did in the original. The vibe is solitary, and the flock is what keeps solitary from becoming lonely.</p>
+  </section>
+  <hr>
+
+  <!-- LOOK -->
+  <section>
+    <p class="sec-label">Art direction</p>
+    <h2>One atmosphere, shared by everything</h2>
+    <p class="lead">The single biggest reason a real-time scene reads as <em>a place</em> instead of <em>some meshes</em> is that every surface in it agrees about the light.</p>
+    <p>There is exactly one shared uniform block — sun direction, sun colour, zenith and horizon colour, ground bounce, fog, ambient, exposure — and every material in the game takes it <strong>by reference</strong> and includes the same GLSL. Terrain, water, clouds, trees, the bird, the flock and the wind ribbons all shade through the same three functions. Nothing is allowed a private fog.</p>
+    <ul>
+      <li><strong>Aerial perspective, not fog.</strong> Distant things do not fade toward a flat grey — they fade toward <em>the colour of the sky in the direction you are looking</em>, brightening toward the sun, with density that thins with altitude. A mountain 15 km away at 4,000 m stays crisp while the valley floor at the same distance is milk. That one function is most of what makes height feel like height.</li>
+      <li><strong>The colour script is a data file.</strong> Eleven hand-authored keyframes across the day, interpolated in linear RGB. Sunrise is a violent orange against a cold violet zenith; noon is almost white-blue and slightly boring <em>on purpose</em>, so that golden hour lands; blue hour is a saturated indigo, never grey.</li>
+      <li><strong>The interface lives inside it.</strong> The HUD's colours are CSS custom properties rewritten every frame from the sky state. The instruments go warm at golden hour and indigo at dusk. Nothing in the interface is a fixed colour fighting the frame behind it.</li>
+      <li><strong>Post as a full chain</strong>, hand-rolled rather than pulled from the examples folder: HDR target, threshold, five-mip dual-filter bloom, crepuscular rays from the sun's screen position, speed-driven radial blur and chromatic aberration, ACES, a filmic grade, vignette, fine grain, FXAA.</li>
+      <li><strong>Cloud shadows drifting across a valley</strong> cost almost nothing and are the best "this is a living place" effect available. They are in the terrain shader.</li>
+    </ul>
+  </section>
+  <hr>
+
+  <!-- TECH -->
+  <section>
+    <p class="sec-label">Architecture</p>
+    <h2>The same separation discipline, taken further</h2>
+    <div class="cards">
+      <div class="card"><h4>sim/ — pure</h4><p>terrain · biome · wind · flight · flock · sky. No Three.js, no DOM, no <code>Math.random</code>. Deterministic from one seed. The whole atmosphere is a pure function of position, time and terrain.</p></div>
+      <div class="card"><h4>render/ — draws sim state</h4><p>Streaming ring-LOD terrain with skirts, the shared atmosphere, the visible-air system, four cloud types, instanced scatter and flock, a hand-rolled post chain.</p></div>
+      <div class="card"><h4>The hot path</h4><p><code>WindField.sample()</code> is called thousands of times per frame — by the bird, by every companion, and by every wind ribbon. It allocates nothing, buckets thermals spatially, and early-outs on squared distance.</p></div>
+      <div class="card"><h4>Quality tiers</h4><p>Four tiers, and the order of the cuts is decided up front: draw distance and ribbon count go first because you barely notice, post-processing goes last because it is most of what makes a frame look expensive. An adaptive monitor demotes on the 80th-percentile frame time, never the mean.</p></div>
+    </div>
+  </section>
+  <hr>
+
+  <!-- GATES -->
+  <section>
+    <p class="sec-label">Phase gates</p>
+    <h2>Each gate still answers exactly one question</h2>
+    <p>Inherited practice from the original, which earned it. Aloft's gates 0–3 are considered passed by inheritance: the flight model, the lift feel and the day cycle all came across intact.</p>
+
+    <div class="gate done"><div class="ph">A</div><div>
+      <h3>The air becomes a place</h3>
+      <p>All seven kinds of air, sourced from terrain and sun, sampled by a single field. Thermals that drift, tilt and die. Wave detected from real ridge geometry.</p>
+      <span class="ask">can you find lift you were not told about? — <strong>yes</strong></span>
+    </div></div>
+    <div class="gate done"><div class="ph">B</div><div>
+      <h3>You can see the wind</h3>
+      <p>Thousands of tracer ribbons advected by the real field, coloured by what kind of air they are in. Cumulus that lives and dies with its thermal. Lenticulars that refuse to move.</p>
+      <span class="ask">can you read the sky from two kilometres out? — <strong>yes</strong></span>
+    </div></div>
+    <div class="gate done"><div class="ph">C</div><div>
+      <h3>The day has an arc</h3>
+      <p>Ground heat that lags the sun, cloudbase that climbs, streets that organise in the afternoon, thermals that die from the ground up, wave that gets better in the dark.</p>
+      <span class="ask">does a run tell a story without a script? — <strong>yes</strong></span>
+    </div></div>
+    <div class="gate"><div class="ph">D</div><div>
+      <h3>It is worth crossing twice</h3>
+      <p>The Logbook, shareable seeds, the route map as a souvenir, the flock as a diegetic score.</p>
+      <span class="ask">do you want to fly the same sky again, better?</span>
+    </div></div>
+    <div class="gate"><div class="ph">E</div><div>
+      <h3>Somewhere to be going</h3>
+      <p>The one thing still missing: a destination. Right now the crossing is open — distance is the only goal. Candidates in the parking lot below.</p>
+      <span class="ask">does the horizon owe you something?</span>
+    </div></div>
+  </section>
+  <hr>
+
+  <!-- PARKING LOT -->
+  <section>
+    <p class="sec-label">Parking lot</p>
+    <h2>Noted, not built</h2>
+    <div class="lot">
+      <p><span class="tag">the big one</span> &nbsp;<strong>A destination.</strong> The crossing currently has an arc but no object. The strongest candidate is a <em>migration</em>: a fixed far point on the map, hundreds of kilometres downwind, that most runs will not reach — so that "how far did you get" becomes "how far along the route", and the same seed can be attempted for weeks. Second candidate: <em>beacons</em>, inherited from the original's parking lot, lit by passing over high points.</p>
+      <p><span class="tag">weather</span> &nbsp;<strong>Weather as air, not hazard.</strong> The wind field already has the shape for it. Overdevelopment (a thermal that grows into a shower and kills the lift under it for twenty minutes), a shear line you can see from a long way off, sea fog rolling inland at dusk. Never storms-as-punishment.</p>
+      <p><span class="tag">real world</span> &nbsp;<strong>Real elevation as another TerrainProvider.</strong> The interface has always allowed it. Name a place, pull SRTM tiles, render it in this art direction, and put today's real sun angle on it. The Sierra wave is a real place with a real reputation and it would be extraordinary to fly it here.</p>
+      <p><span class="tag">birds</span> &nbsp;<strong>Bird presets.</strong> Every feel constant is already one config object, so a small fast carver, a balanced soarer and a huge steady albatross are a preset plus a mesh variant. A choice of feel, never a grind to unlock.</p>
+      <p><span class="tag">audio</span> &nbsp;<strong>The vario as the whole soundtrack.</strong> Real pilots fly by ear. The audio vario is in and it is already the most useful sound in the game; the open question is how far the score can recede and let it lead.</p>
+      <p><span class="tag">from the ancestor</span> &nbsp;Perches and deliberate landings (Aloft's Q6) are half-built — a landing is detected and closes the run gently, but settling onto a specific branch or rooftop is not in. The flight journal became the Logbook. The boost meter was cut: it is the cape's bounce wearing a different hat.</p>
+    </div>
+  </section>
+
+  <footer>
+    Aloft · The Crossing · living design doc · updated in place as the plan grows
+  </footer>
+
+</div>
+</body>
+</html>

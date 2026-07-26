@@ -56,7 +56,7 @@ const vec3 NORTH = vec3(0.0, 0.0, -1.0);
 /**
  * One star per cell of a grid laid over the cube faces: even density, and the
  * cost is a fixed handful of hashes per pixel no matter how many stars are on
- * screen. `mw` lifts the magnitude curve inside the Milky Way so the band
+ * screen. 'mw' lifts the magnitude curve inside the Milky Way so the band
  * reads as *more stars*, not merely a brighter smear.
  */
 vec3 starField(vec3 dir, float grid, float mw) {
@@ -133,7 +133,7 @@ vec3 auroraCurtains(vec3 dir) {
 /**
  * A flat deck of ice cloud projected onto the view ray, so the wisps compress
  * toward the horizon exactly the way a real layer does. Stretched hard on one
- * axis because cirrus is fibrous, never blobby. `cover` comes back separately
+ * axis because cirrus is fibrous, never blobby. 'cover' comes back separately
  * so the caller can veil what is behind it rather than adding light twice.
  */
 vec3 cirrusDeck(vec3 dir, out float cover) {

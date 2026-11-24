@@ -17,7 +17,7 @@ export function placeThermals(land: Land, baked: BakedLand, mv: Movement): Therm
   const out: Thermal[] = [];
   const n = mv.air.thermals;
   for (let i = 0; i < n; i++) {
-    const t = 0.055 + (i / Math.max(1, n - 1)) * 0.8 + (rng() - 0.5) * 0.02;
+    const t = (i === 0 ? 0.04 : 0.055 + (i / Math.max(1, n - 1)) * 0.8) + (rng() - 0.5) * 0.015;
     const [rx, rz] = land.route.at(t);
     const [dx, dz] = land.route.dir(t);
     let best = -1e9;

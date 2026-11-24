@@ -436,9 +436,11 @@ export class Ui {
   }
   postcard(url: string, name: string): void {
     const s = this.photoEl.querySelector('.shot') as HTMLElement;
-    s.innerHTML = `<div style="text-align:center"><img src="${url}" alt="Postcard"><div style="margin-top:18px;display:flex;gap:14px;justify-content:center"><button data-k="d">Save</button><button data-k="c">Close</button></div></div>`;
+    // some frames refuse downloads; there the picture itself is the thing to keep
+    const framed = 'claude' in window || window.self !== window.top;
+    s.innerHTML = `<div style="text-align:center"><img src="${url}" alt="Postcard"><div style="margin-top:18px;display:flex;gap:14px;justify-content:center;align-items:center">${framed ? '<span style="font-style:italic;opacity:.8">Right-click or press and hold the picture to keep it</span>' : '<button data-k="d">Save</button>'}<button data-k="c">Close</button></div></div>`;
     s.classList.add('on');
-    (s.querySelector('[data-k=d]') as HTMLElement).addEventListener('click', () => {
+    s.querySelector('[data-k=d]')?.addEventListener('click', () => {
       const a = document.createElement('a');
       a.href = url;
       a.download = name;

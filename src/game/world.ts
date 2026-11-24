@@ -133,7 +133,7 @@ export class World {
     this.wind.z = G.uWind.value.y;
     // thermals wake with the sun and tire with it
     const id = this.land.id;
-    const v = id === 'darkwater' ? 0.9 : id === 'wintering' ? 0.55 + 0.45 * smooth(0.1, 0.4, p) : 0.35 + 0.65 * smooth(0.02, 0.16, p) * (1 - 0.6 * smooth(0.86, 1, p));
+    const v = id === 'darkwater' ? 0.9 : id === 'wintering' ? 0.7 + 0.3 * smooth(0.1, 0.4, p) : (0.66 + 0.34 * smooth(0.02, 0.16, p)) * (1 - 0.5 * smooth(0.86, 1, p));
     this.thermals.vigor = v;
     this.glass.amount = this.mv.air.glass * smooth(0.72, 0.95, p);
   }

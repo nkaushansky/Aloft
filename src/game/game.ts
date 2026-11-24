@@ -17,7 +17,7 @@ import { LAND_ORDER, LandId } from '../world/lands';
 import { Feather, layFeathers } from './trails';
 import { MOVEMENTS } from './days';
 import { SaveData, load, save, landAt, DayRecord } from './save';
-import { AudioEngine, AudioFrame } from './audioStub';
+import { AudioEngine, AudioFrame } from '../audio/engine';
 
 type Phase = 'boot' | 'title' | 'wake' | 'fly' | 'arrive' | 'roost' | 'night' | 'finale' | 'photo';
 
@@ -197,6 +197,13 @@ export class Game {
     const id = landAt(this.data.day);
     await this.enter(id, undefined, true);
     this.toTitle(true);
+    // draw behind the curtain so every shader is warm before it lifts
+    this.ui.loading(1, 'Waking the light');
+    await this.wait(0.05);
+    for (let i = 0; i < 3; i++) {
+      this.frame(1 / 60);
+      await this.wait(0.02);
+    }
     this.ui.loaded();
   }
 
@@ -516,7 +523,7 @@ export class Game {
     }
     // a called bird comes
     for (const c of this.flock.birds) {
-      if ((c.state === 'waiting' || c.state === 'circling') && this.phase === 'fly' && Math.hypot(c.x - p.x, c.z - p.z) < 130) this.welcome(c);
+      if ((c.state === 'waiting' || c.state === 'circling') && this.phase === 'fly' && Math.hypot(c.x - p.x, c.z - p.z) < 220) this.welcome(c);
     }
     if (this.phase === 'wake' && this.world.land.id === 'stillmere' && this.readyToLeave) {
       const kbd = this.input.device !== 'touch';
@@ -739,7 +746,11 @@ export class Game {
             this.ui.whisper('The air is yours.', 2600);
           } else use = this.bird.mode === 'ground' ? { pitch: 0, roll: 0, beat: this.bird.modeTime > 4 } : this.pilot.fly(this.bird, w.terrain, w.thermals, w.land.route, dt);
         }
-      } else if (ph === 'wake' && this.readyToLeave) use = { pitch: 0, roll: 0, beat: inp.beat };
+      } else if (ph === 'wake') {
+        // anyone who has seen a morning may cut it short
+        if (inp.beat && this.t > 2.2 && (this.world.land.id !== 'stillmere' || this.free || !!this.data.days.stillmere)) this.readyToLeave = true;
+        if (this.readyToLeave) use = { pitch: 0, roll: 0, beat: inp.beat };
+      }
       this.acc += dt * this.slow;
       let n = 0;
       while (this.acc >= SIM_DT && n++ < 8) {
@@ -778,7 +789,7 @@ export class Game {
     // how far along the road
     const off = r.dist(p.x, p.z);
     const t = r.qt;
-    if (t > this.progress && t - this.progress < 0.3) this.progress = t;
+    if (t > this.progress) this.progress += Math.min(t - this.progress, dt * 0.04);
     this.leadT = ease(this.leadT, this.progress, 0.35, dt);
     this.lightP = ease(this.lightP, Math.max(this.progress, 0.02), 0.12, dt);
 
@@ -815,7 +826,8 @@ export class Game {
     // home
     const [ex, ez] = r.at(1);
     const dh = Math.hypot(ex - p.x, ez - p.z);
-    if (b.mode === 'air' && dh < 300 && b.agl < 190 && (this.progress > 0.9 || this.free)) this.beginArrive();
+    if (b.mode === 'air' && dh < 340 && b.agl < 230 && (this.progress > 0.9 || this.free)) this.beginArrive();
+    else if (b.mode === 'air' && dh < 600 && b.agl > 260 && this.progress > 0.9) this.hint('down', 'Come down whenever you like. The night will keep.');
     else if (b.mode === 'air' && dh < 900 && this.progress > 0.9) this.hint('home', w.land.id === 'wintering' ? 'There they are.' : 'There is water ahead for the night.');
     if (b.mode === 'ground' && dh < 120) this.beginRoost();
 
@@ -881,7 +893,7 @@ export class Game {
     for (const c of this.flock.birds) {
       if (c.state !== 'waiting' && c.state !== 'circling') continue;
       const d = Math.hypot(c.x - p.x, (c.y - p.y) * 0.7, c.z - p.z);
-      if (d < (c.state === 'circling' ? 52 : 46) && this.bird.mode === 'air' && this.t > 4) this.welcome(c);
+      if (d < (this.drift ? 170 : c.state === 'circling' ? 56 : 50) && this.bird.mode === 'air' && this.t > 4) this.welcome(c);
       else if (d < 260) this.hint('meet', this.input.device === 'touch' ? 'Someone is there. Call, or fly alongside.' : 'Someone is there. <kbd>E</kbd> to call, or fly alongside.');
     }
   }
@@ -894,7 +906,7 @@ export class Game {
       const wp = l.def.kind === 'whale' ? this.world.landmarks.whalePos() : null;
       const x = wp ? wp.x : l.def.x;
       const z = wp ? wp.z : l.def.z;
-      if (Math.hypot(x - p.x, z - p.z) < l.def.reach && p.y - l.def.y < l.top + 170) {
+      if (Math.hypot(x - p.x, z - p.z) < l.def.reach * 1.2 && p.y - l.def.y < l.top + 240) {
         this.discovered.add(key);
         if (!this.data.landmarks.includes(key)) {
           this.data.landmarks.push(key);

@@ -191,8 +191,6 @@ export class Landmarks {
       switch (d.kind) {
         case 'steeple': {
           const s = new Solid(rng);
-          const base = -d.y; // water is at world 0
-          void base;
           // tower
           for (let i = 0; i < 7; i++) {
             const w = 9.4 - i * 0.16;

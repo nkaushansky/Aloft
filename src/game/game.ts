@@ -387,6 +387,7 @@ export class Game {
     this.fadeTarget = 1;
     this.fadeRate = 1.2;
     await this.wait(1.1);
+    this.paused = true;
     this.free = true;
     this.ui.loading(0.02, '');
     await this.enter(id, seed, true);
@@ -406,6 +407,7 @@ export class Game {
       this.fadeTarget = 1;
       this.fadeRate = 1.2;
       await this.wait(1.1);
+      this.paused = true;
       this.free = false;
       this.ui.loading(0.02, '');
       await this.enter(id, undefined, true);
@@ -423,6 +425,7 @@ export class Game {
     const mv = this.world.mv;
     const first = this.world.land.id === 'stillmere' && !this.free;
     this.go('wake');
+    this.paused = false;
     this.fadeTarget = 0;
     this.fadeRate = 0.4;
     this.audio.setScene('flight');
@@ -732,13 +735,12 @@ export class Game {
     const ph = this.phase;
     if (ph === 'photo') return;
     const w = this.world;
-    const active = ph === 'fly' || ((ph === 'wake' || ph === 'title') && false);
 
     // the sim always runs at 60 Hz
     if (ph === 'arrive') this.stepArrive(dt);
     else {
       let use: FlightInput = { pitch: 0, roll: 0, beat: false };
-      if (active) {
+      if (ph === 'fly') {
         use = inp;
         if (this.drift) {
           if (Math.abs(inp.pitch) + Math.abs(inp.roll) > 0.3 || inp.beat) {
@@ -821,7 +823,7 @@ export class Game {
     this.meet();
     this.discover();
     this.surfaceFx(dt);
-    this.guide(dt, inp, off);
+    this.guide(dt, off);
 
     // home
     const [ex, ez] = r.at(1);
@@ -948,7 +950,7 @@ export class Game {
     this.hintQueue.push([html, hold]);
   }
 
-  private guide(dt: number, inp: FlightInput, off: number): void {
+  private guide(dt: number, off: number): void {
     const b = this.bird;
     const first = this.world.land.id === 'stillmere' && !this.free;
     const touch = this.input.device === 'touch';
@@ -979,7 +981,6 @@ export class Game {
       this.ui.whisper(h, hold);
       this.hintUntil = this.time + hold / 1000 + 1.4;
     }
-    void inp;
   }
 
   // -------------------------------------------------------------------- arriving

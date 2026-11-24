@@ -138,8 +138,7 @@ export class Flock {
     b.x = b.hx + Math.cos(b.t) * b.hr;
     b.z = b.hz + Math.sin(b.t) * b.hr;
     b.y = b.hy + Math.sin(b.t * 0.31 + b.seed) * 9;
-    b.yaw = Math.atan2(Math.sin(b.t), -Math.cos(b.t)) ;
-    // heading is tangent: d/dt(cos,sin) = (-sin, cos)
+    // heading is the tangent: d/dt(cos, sin) = (-sin, cos)
     b.yaw = Math.atan2(Math.sin(b.t), -Math.cos(b.t));
     b.roll = 0.42;
     b.pitch = 0.04;

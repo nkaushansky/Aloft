@@ -186,9 +186,7 @@ function copper(seed: number): Land {
     let h = floor + ridge + 26 * n.fbm(x / 520 + 3, z / 520, 4) * smoothstep(10, 120, ridge);
     // the river
     const rx = riverX(z) + 40 * m.n(x / 260, z / 260);
-    // through the gap it swings across to the next valley
-    const swing = smoothstep(1300, 300, z) * 0 + 0;
-    const dr = Math.abs(u - 0 - rx - swing + 340);
+    const dr = Math.abs(u - rx + 340);
     const rv = smoothstep(46, 170, dr);
     h = lerp(-3.2, h, rv);
     // cross-stream in the gap
@@ -249,7 +247,6 @@ function stair(seed: number): Land {
   ]);
   const grid = route.bake(HALF, 160);
   const rd = (x: number, z: number) => sampleGrid(grid.d, grid.n, grid.half, x, z);
-  const e = new Float64Array(3);
 
   const base = (x: number, z: number): number => {
     const wx = x + 420 * n.n(x / 2400 + 8, z / 2400);
@@ -267,8 +264,7 @@ function stair(seed: number): Land {
     h += 60 * n.fbm(x / 420, z / 420, 3) * smoothstep(100, 500, h);
     // gullies
     const gx = n.n(x / 900 + 3, z / 900) * 0.5;
-    e[0] = gx;
-    const gul = Math.abs(m.n(wx / 240 + gx, wz / 240)) * 1.0;
+    const gul = Math.abs(m.n(wx / 240 + gx, wz / 240));
     h -= (1 - gul) * 34 * smoothstep(400, 1100, h);
     // launch shoulder, high above the cloud sea
     const s0 = Math.hypot(x - 300, z - 5200);
@@ -425,8 +421,7 @@ function darkwater(seed: number): Land {
       const rr = 0.1 + 0.11 * ((n.wid * 9.1) % 1);
       const prof = 1 - smoothstep(rr * 0.82, rr * 1.12, wd);
       const top = 46 + 110 * ((n.wid * 17.3) % 1) + 46 * n.fbm(x / 240, z / 240, 4);
-      const open = smoothstep(90, 260, Math.hypot(n.wx * 1900 - 0.37 * 1900 - x, 0) + wd * 1900 * 0);
-      h = Math.max(h, lerp(-42, top, prof) * (open * 0 + 1) + (prof > 0 ? 0 : 0));
+      h = Math.max(h, lerp(-42, top, prof));
     }
     // sea stacks
     const sd = m.worley(wx / 520, wz / 520, 0.95, 2);
@@ -435,7 +430,6 @@ function darkwater(seed: number): Land {
       const prof = 1 - smoothstep(rr * 0.7, rr * 1.25, sd);
       h = Math.max(h, lerp(-42, 34 + 90 * ((m.wid * 5.3) % 1), prof));
     }
-    // clear water under the start line of flight
     // roost: a ring of low rock around a moonlit lagoon
     const r = Math.hypot(x, z + 5000) + 60 * n.n(x / 260, z / 260);
     const ring = 1 - smoothstep(60, 170, Math.abs(r - 560));

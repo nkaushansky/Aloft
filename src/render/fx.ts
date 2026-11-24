@@ -41,8 +41,6 @@ export class Fx {
   private readonly trail: THREE.Mesh;
   private readonly trPos: Float32Array;
   private readonly trA: Float32Array;
-  private trHead = 0;
-  private trN = 0;
   private readonly sparks: THREE.Mesh;
   private readonly spA: THREE.InstancedBufferAttribute;
   private readonly spB: THREE.InstancedBufferAttribute;
@@ -262,7 +260,7 @@ export class Fx {
   /** wingtip threads: positions of left/right tips and how strongly to mark */
   tips(l: THREE.Vector3, r: THREE.Vector3, amt: number, cam: THREE.Vector3): void {
     const N = 64;
-    // shift history (small; cheap enough)
+    // shift the history; age is the vertex's place in the buffer
     for (let w = 0; w < 2; w++) {
       const o = w * N * 2;
       this.trPos.copyWithin((o + 2) * 3, o * 3, (o + N * 2 - 2) * 3);
@@ -282,17 +280,9 @@ export class Fx {
         this.trA[(o + s) * 2] = amt;
         this.trA[(o + s) * 2 + 1] = sg;
       }
-      for (let i = 0; i < N; i++) {
-        const f = 1 - i / (N - 1);
-        // fade by position in the buffer is done in-shader via vertex id
-        void f;
-      }
     }
-    this.trHead = (this.trHead + 1) % N;
-    this.trN = Math.min(N, this.trN + 1);
     this.trail.geometry.attributes.position.needsUpdate = true;
     this.trail.geometry.attributes.aA.needsUpdate = true;
-    this.trail.geometry.setDrawRange(0, Infinity);
   }
 
   resetTrail(p: THREE.Vector3): void {

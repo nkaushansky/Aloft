@@ -815,7 +815,6 @@ void main(){
   vec3 N = normalize(vN);
   if (leaf > 0.5){
     vec4 t = texture(tLeaf, vUv);
-    vec2 d = vec2(dFdx(vUv.x), dFdy(vUv.y)) * 1024.0;
     float lod = 0.5 * log2(max(dot(dFdx(vUv), dFdx(vUv)), dot(dFdy(vUv), dFdy(vUv))) * 1024.0 * 1024.0 + 1e-6);
     a = t.a * (1.0 + max(lod, 0.0) * 0.22);
     a = sat((a - 0.42) / max(fwidth(a), 0.06) + 0.5);

@@ -64,7 +64,7 @@ export async function bakeLand(o: BakeOptions): Promise<BakedLand> {
       await breathe();
     }
   }
-  stampPads(land, coarse, c, true);
+  stampPads(land, coarse, c);
 
   // --- erosion ----------------------------------------------------------------
   const before = coarse.slice();
@@ -183,11 +183,11 @@ export async function bakeLand(o: BakeOptions): Promise<BakedLand> {
 function placeOf(land: Land, l: { t: number; off: number }): [number, number, number] {
   const [px, pz] = land.route.at(l.t);
   const [dx, dz] = land.route.dir(l.t);
-  // right of travel = (-dz, dx) rotated… travel (dx,dz), right-hand side is (-dz, dx) in XZ with +Z south
+  // right of travel (dx, dz) is (-dz, dx)
   return [px - dz * l.off, pz + dx * l.off, Math.atan2(-dx, -dz)];
 }
 
-function stampPads(land: Land, h: Float32Array, n: number, _coarse: boolean): void {
+function stampPads(land: Land, h: Float32Array, n: number): void {
   const cell = (2 * HALF) / (n - 1);
   for (const l of land.landmarks) {
     if (!l.pad) continue;

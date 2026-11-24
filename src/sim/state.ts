@@ -7,8 +7,11 @@ export interface Vec3 {
   z: number;
 }
 
+/** How the bird is meeting the world right now. */
+export type Mode = 'air' | 'ground' | 'leap';
+
 /**
- * Complete aircraft state. Everything the renderer needs to draw a frame and
+ * Complete bird state. Everything the renderer needs to draw a frame and
  * everything the model needs to step forward. Angles are radians.
  *
  * Conventions (right-handed, matching Three.js world axes):
@@ -16,7 +19,8 @@ export interface Vec3 {
  *  - pitch positive is nose-up.
  *  - roll positive is right-wing-down (banking right).
  */
-export interface AircraftState {
+export interface BirdState {
+  mode: Mode;
   position: Vec3;
   yaw: number;
   pitch: number;
@@ -28,20 +32,36 @@ export interface AircraftState {
   stickRoll: number;
   /** Smoothed extra sink from flying below cruise (m/s, downward). */
   settle: number;
-  /** 1 = fully flying, 0 = fully stalled. Drives control softening + HUD. */
+  /** 1 = fully flying, 0 = fully stalled. Drives control softening. */
   flying: number;
-  /** Vertical air velocity at our position last step (m/s) — the vario's soul. */
+  /** Vertical air velocity at our position (m/s). */
   lift: number;
-  /** Net vertical speed last step (m/s): path + lift - settle. For the HUD. */
+  /** Net vertical speed last step (m/s). */
   climbRate: number;
+  /** 0..1 stamina for wingbeats. */
+  breath: number;
+  /** 0..1 eased wingbeat effort. */
+  beat: number;
+  /** Wingbeat phase (radians), advancing while beating. */
+  beatPhase: number;
+  /** Height above ground or water (m). */
+  agl: number;
+  /** 0..1 eased: legs down, wings cupped, about to touch. */
+  flare: number;
+  /** 1 while skimming a surface this step, easing out. */
+  touch: number;
+  /** Surface under us is water. */
+  overWater: boolean;
+  /** Seconds in the current mode. */
+  modeTime: number;
 }
 
-/** Fresh launch: wings level, at altitude, at speed, pointed down -Z. */
-export function createLaunchState(cfg: Config): AircraftState {
+export function createState(cfg: Config, x: number, y: number, z: number, yaw: number): BirdState {
   return {
-    position: { x: 0, y: cfg.launchAltitude, z: 0 },
-    yaw: 0,
-    pitch: 0,
+    mode: 'air',
+    position: { x, y, z },
+    yaw,
+    pitch: cfg.trimPitch,
     roll: 0,
     airspeed: cfg.launchAirspeed,
     stickPitch: 0,
@@ -50,20 +70,24 @@ export function createLaunchState(cfg: Config): AircraftState {
     flying: 1,
     lift: 0,
     climbRate: 0,
+    breath: 1,
+    beat: 0,
+    beatPhase: 0,
+    agl: 50,
+    flare: 0,
+    touch: 0,
+    overWater: false,
+    modeTime: 0,
   };
 }
 
-/** Unit forward vector for the craft's yaw/pitch (roll doesn't move the nose). */
-export function forwardOf(state: AircraftState): Vec3 {
-  const cp = Math.cos(state.pitch);
-  return {
-    x: -Math.sin(state.yaw) * cp,
-    y: Math.sin(state.pitch),
-    z: -Math.cos(state.yaw) * cp,
-  };
+/** Unit forward vector for the bird's yaw/pitch (roll doesn't move the nose). */
+export function forwardOf(s: { yaw: number; pitch: number }): Vec3 {
+  const cp = Math.cos(s.pitch);
+  return { x: -Math.sin(s.yaw) * cp, y: Math.sin(s.pitch), z: -Math.cos(s.yaw) * cp };
 }
 
-/** Specific total energy (per unit mass): potential + kinetic. The HUD's star. */
-export function totalEnergy(state: AircraftState, cfg: Config): number {
-  return cfg.gravity * state.position.y + 0.5 * state.airspeed * state.airspeed;
+/** Specific total energy (per unit mass): potential + kinetic. */
+export function totalEnergy(s: BirdState, cfg: Config): number {
+  return cfg.gravity * s.position.y + 0.5 * s.airspeed * s.airspeed;
 }

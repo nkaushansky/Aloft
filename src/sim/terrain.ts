@@ -1,70 +1,66 @@
-import type { Config } from './config';
-import { fbm, valueNoise } from './noise';
-
 /**
- * The terrain abstraction the whole game is built against. The sim (and later
- * the lift system) only ever asks "how high is the ground here?" — never where
- * that answer comes from. Phase 1's shaped hill and any future real-elevation
- * mode are just other implementations of this interface.
+ * The terrain abstraction the whole game is built against. The sim only ever
+ * asks "how high is the ground here?" — never where that answer comes from.
  */
 export interface TerrainProvider {
-  /** Ground height (m) at a world-space XZ point. */
+  /** Ground height (m) at a world-space XZ point (lakebed included). */
   heightAt(x: number, z: number): number;
 }
 
-/** Phase 0 world: a flat plane at y = 0, everywhere. */
+/** A flat plane at a fixed height — for tests. */
 export class FlatTerrain implements TerrainProvider {
+  constructor(private readonly h = 0) {}
   heightAt(_x: number, _z: number): number {
-    return 0;
+    return this.h;
   }
 }
 
-/**
- * Phase 1 world: one smooth gaussian hill rising from a flat plain. Gentle
- * everywhere by construction — no cliffs, no creases — which suits both the
- * tone and the ridge-lift math (a continuous gradient).
- */
-export class HillTerrain implements TerrainProvider {
-  constructor(private readonly cfg: Config) {}
+/** A baked heightfield core with a coarse far ring around it. */
+export class Heightfield implements TerrainProvider {
+  constructor(
+    private readonly core: Float32Array,
+    private readonly n: number,
+    private readonly half: number,
+    private readonly far: Float32Array,
+    private readonly nFar: number,
+    private readonly farHalf: number,
+  ) {}
 
   heightAt(x: number, z: number): number {
-    const dx = x - this.cfg.hillX;
-    const dz = z - this.cfg.hillZ;
-    const r2 = (dx * dx + dz * dz) / (this.cfg.hillRadius * this.cfg.hillRadius);
-    return r2 > 12 ? 0 : this.cfg.hillHeight * Math.exp(-r2);
+    const e = Math.max(Math.abs(x), Math.abs(z)) / this.half;
+    if (e < 0.95) return bil(this.core, this.n, this.half, x, z);
+    const t = Math.min(1, Math.max(0, (e - 0.95) / 0.042));
+    const w = 1 - t * t * (3 - 2 * t);
+    const f = bil(this.far, this.nFar, this.farHalf, x, z);
+    return w > 0 ? w * bil(this.core, this.n, this.half, x, z) + (1 - w) * f : f;
   }
 }
 
-/**
- * Phase 2 world: gentle rolling country from seeded fractal noise, with the
- * hero hill still rising above it. Every slope is continuous, so ridge lift
- * (derived from the gradient) works everywhere the wind meets the land.
- * The launch area is eased toward flat so you always start over calm ground.
- */
-export class ProceduralTerrain implements TerrainProvider {
-  constructor(private readonly cfg: Config) {}
+/** Anything 8-bit laid over the same core grid (ground masks). */
+export class MaskField {
+  constructor(
+    private readonly data: Uint8Array,
+    private readonly n: number,
+    private readonly half: number,
+  ) {}
 
-  heightAt(x: number, z: number): number {
-    const c = this.cfg;
-    // rolling base — biased so the deepest basins dip below the waterline
-    // and become lakes (water sits at cfg.waterLevel)
-    const rolling =
-      (fbm(x / c.terrainScale, z / c.terrainScale, c.terrainSeed) * 0.68 + 0.32) *
-      c.terrainAmplitude;
-    // macro relief: a much larger swell so the horizon has moods — broad
-    // uplands, wide vales — instead of one endless texture of hills
-    const macro =
-      (valueNoise(x / 2600 + 13.7, z / 2600 + 5.3, c.terrainSeed * 7 + 29) - 0.5) * 2 * 48;
-    // hero hill on top
-    const dx = x - c.hillX;
-    const dz = z - c.hillZ;
-    const r2 = (dx * dx + dz * dz) / (c.hillRadius * c.hillRadius);
-    const hero = r2 > 12 ? 0 : c.hillHeight * Math.exp(-r2);
-    // ease toward a calm meadow near the launch point — comfortably above
-    // the waterline, so home is always dry ground
-    const launchDist2 = (x * x + z * z) / (400 * 400);
-    const calm = launchDist2 >= 1 ? 1 : launchDist2 * launchDist2 * (3 - 2 * launchDist2);
-    const launchPlain = c.waterLevel + 12;
-    return launchPlain + (rolling + macro - launchPlain) * calm + hero;
+  at(x: number, z: number, ch: 0 | 1 | 2 | 3): number {
+    const i = Math.round((x / (2 * this.half) + 0.5) * (this.n - 1));
+    const j = Math.round((z / (2 * this.half) + 0.5) * (this.n - 1));
+    if (i < 0 || j < 0 || i >= this.n || j >= this.n) return 0;
+    return this.data[(j * this.n + i) * 4 + ch] / 255;
   }
+}
+
+function bil(a: Float32Array, n: number, half: number, x: number, z: number): number {
+  const u = Math.min(n - 1.001, Math.max(0, (x / (2 * half) + 0.5) * (n - 1)));
+  const v = Math.min(n - 1.001, Math.max(0, (z / (2 * half) + 0.5) * (n - 1)));
+  const i = u | 0;
+  const j = v | 0;
+  const fx = u - i;
+  const fz = v - j;
+  const k = j * n + i;
+  const t0 = a[k] + (a[k + 1] - a[k]) * fx;
+  const t1 = a[k + n] + (a[k + n + 1] - a[k + n]) * fx;
+  return t0 + (t1 - t0) * fz;
 }

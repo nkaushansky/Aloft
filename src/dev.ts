@@ -1,0 +1,76 @@
+// Dev-only visual harness: dev.html?land=copper&p=0.5&t=0.4&up=80&yaw=0&pitch=-5
+import { Engine, QUALITY } from './render/engine';
+import { TerrainMesh } from './render/terrainMesh';
+import { applyLight, makeFrame } from './render/light';
+import { MOVEMENTS } from './game/days';
+import { HALF, LAND_ORDER, LandId, makeLand } from './world/lands';
+import { bakeAsync } from './world/baker';
+import { Heightfield, MaskField } from './sim/terrain';
+import { Trees } from './render/trees';
+import { Grass } from './render/grass';
+import { placeThermals } from './game/placement';
+import { G } from './render/globals';
+import { Water } from './render/water';
+import { placeCurrents } from './game/placement';
+
+const q = new URLSearchParams(location.search);
+const num = (k: string, d: number) => (q.has(k) ? Number(q.get(k)) : d);
+const id = (q.get('land') ?? 'copper') as LandId;
+(async () => {
+  const eng = new Engine(document.getElementById('c') as HTMLCanvasElement, { ...QUALITY.high, msaa: num('msaa', 0), heightN: 1024 });
+  const mv = MOVEMENTS[id];
+  const land = makeLand(id);
+  const baked = await bakeAsync({ id, n: num('n', 1024) });
+  const terrain = new TerrainMesh(1);
+  terrain.load(baked);
+  terrain.setStyle(mv.style, LAND_ORDER.indexOf(id));
+  eng.opaque.add(terrain.mesh);
+  const hf = new Heightfield(baked.height, baked.n, HALF, baked.far, baked.nFar, baked.farHalf);
+  const th = placeThermals(land, baked, mv);
+  const trees = new Trees(eng.opaque, eng.shadowScene);
+  trees.farR = num('tf', 1400);
+  trees.load(mv.trees, mv.treeGap, hf, new MaskField(baked.mask, baked.n, HALF), land.seed, baked.landmarks.map((l) => ({ x: l.x, z: l.z, r: 50 })));
+  terrain.style.uTreeFar.value = trees.farR;
+  const grass = new Grass(eng.opaque, terrain.style, num('grass', 1));
+  grass.setStyle(mv.grass, LAND_ORDER.indexOf(id));
+  const water = new Water(eng.V);
+  water.setStyle(mv.water);
+  water.setCurrents(placeCurrents(land));
+  eng.water.add(water.mesh);
+  eng.clouds.buildVolume(64);
+  eng.clouds.setWeather(mv.weather(land.route, th, land.seed));
+  eng.resize(true);
+  eng.fade = 0;
+  const frame = makeFrame();
+  const shot = async (o: Record<string, number>) => {
+    const t = o.t ?? num('t', 0.3);
+    const p = o.p ?? num('p', 0.4);
+    const [x, z] = land.route.at(t);
+    const [dx, dz] = land.route.dir(t);
+    const off = o.off ?? num('off', 0);
+    const up = o.up ?? num('up', 90);
+    const px = x - dz * off;
+    const pz = z + dx * off;
+    const gy = Math.max(0, hf.heightAt(px, pz));
+    eng.camera.position.set(px, o.y ?? gy + up, pz);
+    const yaw = Math.atan2(-dx, -dz) + ((o.yaw ?? num('yaw', 0)) * Math.PI) / 180;
+    const pit = ((o.pitch ?? num('pitch', -4)) * Math.PI) / 180;
+    eng.camera.rotation.set(pit, yaw, 0, 'YXZ');
+    applyLight(mv.keys, p, frame);
+    eng.invalidateShadows();
+    eng.clouds.cut();
+    const frames = o.frames ?? num('frames', 5);
+    for (let i = 0; i < frames; i++) {
+      G.uTime.value += 0.016;
+      eng.camera.updateMatrixWorld();
+      water.update(eng.camera.position);
+      trees.update(eng.camera, 100000);
+      grass.update(eng.camera.position.y - gy);
+      terrain.update(eng.camera, eng.camera.position.y - gy);
+      eng.render(frame, eng.camera.position, baked.maxH);
+    }
+    return { patches: terrain.patches, calls: eng.gl.info.render.calls, tris: eng.gl.info.render.triangles, trees: trees.count };
+  };
+  (window as any).__shot = shot;
+  (window as any).__ready = true;
+})();

@@ -1,11 +1,10 @@
 /**
- * ALL tunable feel constants live here — this file is the point of Phase 0.
- *
- * Every value below is a starting guess and is expected to be re-tuned live
- * (the whole object is wired to a lil-gui panel). Comments describe what each
+ * ALL tunable feel constants live here. The glide itself — gravity, lift, drag,
+ * trim, the eased stick — was tuned by hand over the first prototype and is
+ * the one thing the re-envisioning did not touch. Comments describe what each
  * knob does to the *feel*, not just its units.
  *
- * The sim reads this object every step, so edits from the GUI apply instantly.
+ * The sim reads this object every step; `?tune` opens a live panel over it.
  */
 export const config = {
   // ---------------------------------------------------------------- forces
@@ -111,115 +110,91 @@ export const config = {
   /** Terminal speed in a dive (m/s). A hard cap so dives stay readable. */
   maxAirspeed: 55,
 
-  // --------------------------------------------------------- launch / reset
-  /** Height (m) you relaunch from — the size of your starting energy tank.
-   *  At a ~13:1 glide that's ~2.6km of still-air range: enough to reach the
-   *  home thermal with room to explore on the way. */
-  launchAltitude: 200,
-
-  /** Speed (m/s) you relaunch at. Slightly above cruise: a confident start. */
-  launchAirspeed: 24,
-
-  // ----------------------------------------------------------------- camera
-  /** How far behind the craft the chase cam sits (m). */
-  camDistance: 13,
-
-  /** How far above the craft the chase cam sits (m). */
-  camHeight: 4.5,
-
+  // ---------------------------------------------------------------- breath
   /**
-   * Follow smoothing (0..1 per 60Hz frame). Low = the camera lags and drifts
-   * (dreamy, shows speed through separation); high = locked on (twitchy).
+   * Wingbeats cost breath; gliding is free. A full breath is this many
+   * seconds of beating — enough to leave a lakeshore and find the first
+   * rising air, never enough to ignore it.
    */
-  camLerp: 0.08,
+  breathSeconds: 9,
 
-  /** How far ahead of the craft the camera looks (m) — sells forward motion. */
-  camLookAhead: 14,
+  /** Push along the nose while beating (m/s²). Felt as a lean, not a kick. */
+  beatThrust: 4.6,
 
-  /** Field of view (degrees). Wider = faster-feeling, smaller-feeling craft. */
-  camFov: 60,
+  /** Upward carry while beating at cruise (m/s). */
+  beatLift: 2.6,
 
-  // ------------------------------------------- phase 1: the world & the air
-  /** The one hill: a smooth gaussian rise. Height/radius set its character —
-   *  tall & tight reads as a peak, low & wide as a long soarable ridge. */
-  hillHeight: 220,
-  hillRadius: 500,
-  hillX: 0,
-  hillZ: -1100,
+  /** Breath returned per second: gliding / in rising air / at rest. */
+  breathGlide: 0.018,
+  breathLift: 0.1,
+  breathRest: 0.34,
 
-  /** Steady wind speed (m/s). Drives ridge lift; more wind = stronger lift
-   *  on windward slopes. */
-  windSpeed: 9,
+  /** Breath returned by one of the flock's dropped feathers. */
+  breathFeather: 0.07,
 
-  /** Direction the wind travels toward, degrees. 0 = the way you launch, so
-   *  by default the wind is at your back and strikes the hill's near face. */
-  windDirDeg: 0,
+  // ------------------------------------------------------- ground and water
+  /** How near the surface (m) the air starts to cushion you. */
+  cushionHeight: 7,
 
+  /** Fraction of sink the cushion takes away right at the surface. */
+  cushion: 0.6,
+
+  /** The bird's belly clearance (m) when skimming. */
+  clearance: 1.1,
+
+  /** Below this airspeed, a level touch becomes a landing. */
+  landSpeed: 13.5,
+
+  /** Water deeper than this can't be stood in; the bird skims it instead. */
+  wadeDepth: 0.62,
+
+  /** Speed at which a leap leaves the ground (m/s). */
+  leapSpeed: 13,
+
+  // ---------------------------------------------------------------- the air
   /**
    * How much the wind carries the craft (0..1). Airspeed is speed *through*
-   * the air — but the air itself moves. At 0.65, a 9 m/s tailwind adds
-   * ~6 m/s of ground speed: flying downwind is visibly faster, pushing
-   * upwind is honest work. The streaks aren't a compass, they're a current.
+   * the air — but the air itself moves. Downwind is visibly faster, upwind
+   * is honest work.
    */
-  windCarry: 0.65,
-
-  /** The thermal field: how many columns dot the land and the average
-   *  personality they vary around (±~35% each, per seed). Strength 7 vs a
-   *  ~1.4 m/s glide sink means an average core lifts you at ~5.5 m/s — a
-   *  boost you feel in your stomach, arriving smoothly because the column's
-   *  edge is a gaussian, never a wall. */
-  thermalCount: 9,
-  thermalSeed: 3,
-  thermalRadius: 100,
-  thermalStrength: 7,
-  thermalTop: 450,
+  windCarry: 0.6,
 
   /** Multiplier on ridge lift (1 = the wind's upslope component, straight). */
   ridgeGain: 1.0,
 
   /** Height above the ground (m) where ridge lift fades to nothing. */
-  ridgeCeiling: 300,
+  ridgeCeiling: 320,
 
-  // --------------------------------------- phase 2: a world worth exploring
-  /** Seed for the rolling terrain — a new number is a new countryside. */
-  terrainSeed: 7,
+  /** Flying in company: drag saved per companion, up to the cap. */
+  draftPerBird: 0.035,
+  draftMax: 0.2,
 
-  /** How tall the rolling hills get (m). Character of the countryside:
-   *  low = plains with soft swells, high = proper hill country. */
-  terrainAmplitude: 90,
+  // --------------------------------------------------------- launch / reset
+  launchAltitude: 60,
+  launchAirspeed: 21,
 
-  /** Wavelength of the rolling (m) — how far apart the swells sit. */
-  terrainScale: 700,
+  // ----------------------------------------------------------------- camera
+  /** How far behind the bird the chase cam sits (m). */
+  camDistance: 9.6,
 
-  // -------------------------------------- phase 4: the world grows heart
+  /** How far above the bird the chase cam sits (m). */
+  camHeight: 2.9,
+
   /**
-   * The water surface height (m). Terrain basins below this become lakes —
-   * raise it and the world floods into an archipelago, lower it and the
-   * lakes shrink to ponds. Water is a wind-tell (ripples), a thermal
-   * suppressor (cool ground), and later Q6's shorelines.
+   * Follow smoothing (per second). Low = the camera lags and drifts (dreamy,
+   * shows speed through separation); high = locked on (twitchy).
    */
-  waterLevel: 14,
+  camFollow: 4.2,
 
-  /** Free-drifting clouds beyond the thermal caps. Postcard machinery. */
-  cloudCount: 6,
+  /** How far ahead of the bird the camera looks (m). */
+  camLookAhead: 16,
 
-  /** How dark a cloud's shadow falls on the land (0 = off). The shadows are
-   *  the real prize: the land breathes as they drift over it. */
-  cloudShadow: 0.13,
+  /** How much of the bird's bank the horizon shares. */
+  camRoll: 0.22,
 
-  // ------------------------------------------------ phase 3: face & voice
-  /**
-   * Where in the day you are, 0..1: golden dawn → noon → golden dusk → back.
-   * Never full night — dusk is as dark as Aloft gets. A free sunset to
-   * chase, exactly as the art direction promised.
-   */
-  timeOfDay: 0.15,
-
-  /** Whether time drifts on its own (the slider still works either way). */
-  dayAuto: true,
-
-  /** Seconds for a full day loop. Long enough to feel like weather. */
-  dayLength: 480,
+  /** Field of view (degrees), and how much speed opens it. */
+  camFov: 56,
+  camFovSpeed: 12,
 };
 
 export type Config = typeof config;

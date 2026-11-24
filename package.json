@@ -1,16 +1,20 @@
 {
   "name": "aloft",
   "private": true,
-  "version": "0.0.1",
-  "description": "Aloft — Phase 0: a low-poly wedge that flies. Does gliding feel good?",
+  "version": "1.0.0",
+  "description": "Aloft \u2014 a late young crane, six lands south. A quiet flight.",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "test:sim": "esbuild tests/simcheck.ts --bundle --platform=node --outfile=node_modules/.cache/simcheck.cjs && node node_modules/.cache/simcheck.cjs"
+    "test:sim": "esbuild tests/simcheck.ts --bundle --platform=node --log-level=warning --outfile=node_modules/.cache/simcheck.cjs && node node_modules/.cache/simcheck.cjs",
+    "test:journey": "esbuild tests/journey.ts --bundle --platform=node --log-level=warning --outfile=node_modules/.cache/journey.cjs && node node_modules/.cache/journey.cjs",
+    "build:single": "vite build --mode single"
   },
   "dependencies": {
+    "@fontsource/forum": "^5.3.0",
+    "@fontsource/spectral": "^5.3.0",
     "lil-gui": "^0.19.2",
     "three": "^0.180.0"
   },

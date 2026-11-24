@@ -119,10 +119,10 @@ export const config = {
   breathSeconds: 9,
 
   /** Push along the nose while beating (m/s²). Felt as a lean, not a kick. */
-  beatThrust: 4.6,
+  beatThrust: 5.2,
 
   /** Upward carry while beating at cruise (m/s). */
-  beatLift: 2.6,
+  beatLift: 3.6,
 
   /** Breath returned per second: gliding / in rising air / at rest. */
   breathGlide: 0.018,
@@ -159,6 +159,10 @@ export const config = {
    */
   windCarry: 0.6,
 
+  /** How much rising air shelters you from that drift, so circling in a
+   *  thermal is lean-and-rest instead of constant correction. */
+  liftHold: 0.85,
+
   /** Multiplier on ridge lift (1 = the wind's upslope component, straight). */
   ridgeGain: 1.0,
 
@@ -175,10 +179,10 @@ export const config = {
 
   // ----------------------------------------------------------------- camera
   /** How far behind the bird the chase cam sits (m). */
-  camDistance: 9.6,
+  camDistance: 8.4,
 
   /** How far above the bird the chase cam sits (m). */
-  camHeight: 2.9,
+  camHeight: 3.0,
 
   /**
    * Follow smoothing (per second). Low = the camera lags and drifts (dreamy,

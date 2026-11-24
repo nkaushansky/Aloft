@@ -80,9 +80,9 @@ export class Grass {
       this.meshes.push(m);
     };
     const k = Math.sqrt(this.amount);
-    mk(Math.round(190 * k), 0, 5);
-    mk(Math.round(70 * k), 1, 4); // reeds
-    mk(Math.round(74 * k), 2, 3); // flowers
+    mk(Math.round(230 * k), 0, 6);
+    mk(Math.round(96 * k), 1, 5); // reeds
+    mk(Math.round(84 * k), 2, 3); // flowers
   }
 
   setStyle(g: Movement['grass'], land: number): void {
@@ -134,14 +134,14 @@ void main(){
   if (uKind < 0.5){
     keep = step(rnd2.x, mk.g * 1.05 - mk.b * 0.9 - mk.r * 0.35) * step(0.55, y) * smoothstep(0.3, 0.5, patchy + mk.g * 0.25);
     if (gLand == 2.0) keep *= step(mk.a, 0.3);
-    h = gTall * (0.34 + 0.4 * rnd.x) * (0.6 + 0.8 * patchy);
+    h = gTall * (0.3 + 0.36 * rnd.x) * (0.55 + 0.8 * patchy) * (0.65 + 0.5 * fract(rnd.x * 9.0 + position.z * 0.61));
   } else if (uKind < 1.5){
     // reeds keep to the edge of the water
     float edge = smoothstep(-0.75, -0.2, y) * (1.0 - smoothstep(0.5, 1.5, y));
     float bed = smoothstep(0.42, 0.56, textureLod(uNoise, xz / 120.0 + 0.2, 0.0).r);
     keep = step(rnd2.x, edge * bed * 1.2) * step(0.1, mk.g + edge) * step(mk.b, 0.5);
     if (gLand == 3.0 || gLand == 4.0 || gLand == 2.0) keep *= 0.0;
-    h = 1.5 + 1.5 * rnd.x;
+    h = (1.2 + 1.3 * rnd.x) * (0.6 + 0.5 * fract(rnd.x * 9.0 + position.z * 0.61));
   } else {
     keep = step(rnd2.x, (mk.g - mk.b - mk.r * 0.6) * smoothstep(0.5, 0.66, textureLod(uNoise, xz / 75.0 + 0.6, 0.0).r)) * step(0.7, y);
     if (gLand == 2.0) keep *= step(mk.a, 0.3);
@@ -154,7 +154,7 @@ void main(){
   float t = position.y;
   float spread = uKind < 0.5 ? 0.42 : 0.22;
   vec3 p = vec3(xz.x, y - 0.04, xz.y);
-  p.xz += dir * 0.07 * (1.0 + rnd.x);
+  p.xz += dir * (0.10 + 0.16 * fract(rnd.y * 7.0 + b * 0.37)) * (1.0 + rnd.x);
   // gusts roll through as one wave
   vec2 wd = normalize(uWind + vec2(1e-4));
   float ws = length(uWind);
@@ -171,7 +171,9 @@ void main(){
   p.y += h * t * (1.0 - 0.22 * dot(bend, bend) * t);
   p.xz += bend * h * t * t;
   // width holds up at distance so fields don't go bald
-  float w = (0.016 + 0.00065 * dxz) * (uKind < 0.5 ? 1.0 : uKind < 1.5 ? 1.15 : 1.0) * smoothstep(0.0, 0.02, h);
+  float w = (0.0075 + 0.0008 * dxz) * (uKind < 0.5 ? 1.0 : uKind < 1.5 ? 1.0 : 1.0) * smoothstep(0.0, 0.02, h) * (0.7 + 0.6 * rnd2.y);
+  // anything brushing the lens gets out of the way
+  h *= smoothstep(0.9, 2.6, length(vec3(xz.x, y + 0.6, xz.y) - uCamPos));
   vec3 toCam = normalize(uCamPos - p);
   vec3 side = normalize(cross(vec3(0.0, 1.0, 0.0), toCam));
   p += side * position.x * w * (1.0 - t * 0.75) ;

@@ -364,15 +364,15 @@ void main(){
   vec4 b2 = tri(vW, tw, 1.0 / 9.5);
   float dab = mix(b1.b, b2.b, 0.55 * near);
 
-  // detail normal from the same strokes
-  float e = 0.0;
+  // detail normals: soft strokes on soft ground, hard fracture on stone
   if (mid > 0.01) {
-    float s1 = 1.0 / 46.0;
-    vec2 du = vec2(1.6, 0.0);
-    float hx = nz((vW.xz + du.xy) * s1).b - nz((vW.xz - du.xy) * s1).b;
-    float hz = nz((vW.xz + du.yx) * s1).b - nz((vW.xz - du.yx) * s1).b;
-    float rough = 0.22 + 0.6 * mk.b;
-    N = normalize(N + vec3(-hx, 0.0, -hz) * rough * mid);
+    float rkN = smoothstep(0.2, 0.8, mk.b);
+    vec4 q1 = tri(vW, tw, 1.0 / 71.0), q2 = tri(vW + 1.7, tw, 1.0 / 71.0);
+    vec4 r1 = tri(vW, tw, 1.0 / 17.0), r2 = tri(vW + 0.45, tw, 1.0 / 17.0);
+    vec3 g1 = vec3(q1.r - q2.r, (q1.b - q2.b) * 0.5, q1.g - q2.g);
+    vec3 g2 = vec3(r1.b - r2.b, r1.r - r2.r, r1.g - r2.g) * (0.35 + 0.65 * near);
+    float soil = 1.0 - smoothstep(0.1, 0.5, mk.r) * smoothstep(0.0, 0.3, vCan);
+    N = normalize(N + (g1 * (0.5 + 2.6 * rkN) + g2 * (0.35 + 1.9 * rkN)) * mid * soil);
   }
 
   // --- paint --------------------------------------------------------------
@@ -380,7 +380,37 @@ void main(){
   vec3 grass = mix(sGrassA, sGrassB, sat(m2 * 1.5 - 0.25 + (dab - 0.5) * 0.6));
   grass = mix(grass, sDry, sat((m1 - 0.42) * 1.5) * 0.65);
   vec3 col = mix(sDry, grass, lush);
-  float dabMul = 0.78 + 0.44 * dab;
+  float dabMul = 0.72 + 0.56 * dab;
+  // tussocks and hollows: the ground is never one sheet
+  float tus = nz(vW.xz / 152.0 + 0.11).g;
+  float hol = nz(vW.xz / 620.0 + 0.4).r;
+  float tk = smoothstep(0.42, 0.82, tus) * (1.0 - smoothstep(3500.0, 9000.0, vDist));
+  col = mix(col, mix(sGrassB, sDry, 0.45) * 1.06, tk * 0.5 * lush);
+  col *= mix(1.0, 0.7, smoothstep(0.52, 0.36, hol) * lush);
+  // a pale belt of standing reed along the water
+  float reed = smoothstep(0.35, 0.8, vW.y) * (1.0 - smoothstep(1.2, 2.6 + 1.6 * hol, vW.y)) * lush;
+  col = mix(col, sDry * (0.9 + 0.35 * tus), reed * 0.62);
+  if (sStrata > 0.0) {
+    // wind-laid sand: long ripples, gravel lag, desert varnish
+    vec2 wd0 = normalize(uWind + vec2(1e-4));
+    float rip = sin(dot(vW.xz, wd0) * 0.55 + nz(vW.xz / 97.0).r * 14.0) * 0.5 + 0.5;
+    float big = sin(dot(vW.xz, wd0) * 0.047 + nz(vW.xz / 420.0).r * 9.0) * 0.5 + 0.5;
+    float lag = smoothstep(0.5, 0.72, nz(vW.xz / 240.0 + 0.7).r + (tus - 0.5) * 0.3);
+    col *= 0.9 + 0.12 * rip * near + 0.1 * big;
+    col = mix(col, mix(sRockA, sMud, 0.35) * (0.75 + 0.5 * tus), lag * 0.6 * (1.0 - lush));
+    col = mix(col, sSnow, smoothstep(0.66, 0.8, nz(vW.xz / 510.0 + 0.2).r) * 0.3 * (1.0 - lush));
+    N = normalize(N + vec3(wd0.x, 0.0, wd0.y) * (rip - 0.5) * 0.22 * near + vec3(wd0.x, 0.0, wd0.y) * (big - 0.5) * 0.16 * mid);
+  }
+  // at your feet: blades, litter, grit
+  float close = 1.0 - smoothstep(14.0, 70.0, vDist);
+  if (close > 0.0) {
+    float f1 = tri(vW, tw, 1.0 / 2.6).b, f2 = tri(vW + 5.0, tw, 1.0 / 0.9).b;
+    col *= mix(1.0, 0.55 + 0.6 * f1 + 0.34 * f2, close);
+    N = normalize(N + vec3(f1 - 0.5, 0.0, f2 - 0.5) * 0.5 * close);
+  }
+  // beyond the planted shrubs, the land keeps its freckles
+  float frk = smoothstep(0.80, 0.9, nz(vW.xz / 310.0 + 0.23).g * 0.6 + nz(vW.xz / 143.0).g * 0.4) * smoothstep(160.0, 700.0, vDist) * (1.0 - smoothstep(5200.0, 9000.0, vDist));
+  col = mix(col, mix(sForestA, sGrassA, 0.35) * 0.55, frk * (0.75 - 0.5 * mk.b));
   col *= dabMul;
 
   // forest floor near, canopy far
@@ -389,7 +419,12 @@ void main(){
   float kind = sat(m2 * 2.2 - 0.6 + (nz(vW.xz / 61.0).r - 0.5) * 1.6);
   vec3 can = mix(sForestA, sForestB, smoothstep(0.35, 0.65, kind));
   can = mix(can, sForestC, smoothstep(0.62, 0.8, nz(vW.xz / 38.0 + 0.2).r * 0.6 + m1 * 0.5));
-  float canShade = mix(0.34, 1.0, smoothstep(0.38, 0.85, crown * 0.6 + crown2 * 0.4));
+  float canShade = mix(0.3, 0.92, smoothstep(0.4, 0.86, crown * 0.55 + crown2 * 0.45));
+  // from far off a wood is a weave of its own colours, never a flat wash
+  float weave = nz(vW.xz / 331.0 + 0.6).g;
+  can = mix(can, sForestA, 0.35 * smoothstep(0.5, 0.8, weave));
+  can = mix(can, sForestC, 0.4 * smoothstep(0.45, 0.2, weave));
+  can *= mix(1.0, 0.84, smoothstep(600.0, 2500.0, vDist));
   vec3 floorC = mix(col, can * 0.5, 0.6);
   float isF = smoothstep(0.12, 0.5, mk.r);
   vec3 fcol = mix(floorC, can * canShade, vCan > 0.0 ? smoothstep(0.0, 0.35, vCan) : 0.0);
@@ -423,7 +458,8 @@ void main(){
 
   // shore: sand, mud, and a dark wet lip
   float sh = vW.y + (m3 - 0.5) * 0.7 + (dab - 0.5) * 0.35;
-  float sandy = (1.0 - smoothstep(0.5, 2.0, sh)) * (1.0 - rk * 0.7);
+  float marsh = (uLand == 0.0 || uLand == 5.0) ? 1.0 : 0.0;
+  float sandy = (1.0 - smoothstep(mix(0.5, 0.2, marsh), mix(2.0, 0.75, marsh), sh)) * (1.0 - rk * 0.7);
   col = mix(col, mix(sMud, sSand, smoothstep(-0.2, 1.0, sh)) * (0.85 + 0.3 * dab), sandy);
   float wet = 1.0 - smoothstep(0.02, 0.55, sh);
   col *= mix(1.0, 0.55, wet);
@@ -454,15 +490,15 @@ void main(){
   if (sSheen > 0.0) {
     vec2 wd = normalize(uWind + vec2(1e-4));
     vec2 q = vW.xz - uWind * uTime * 1.7;
-    float g = nz(vec2(dot(q, wd) / 260.0, dot(q, vec2(-wd.y, wd.x)) / 780.0)).r;
-    g = smoothstep(0.52, 0.78, g);
+    float g = nz(vec2(dot(q, wd) / 190.0, dot(q, vec2(-wd.y, wd.x)) / 1500.0)).r;
+    g = smoothstep(0.5, 0.8, g) * (0.55 + 0.9 * nz(q / 61.0).b);
     float gz = pow(1.0 - sat(dot(V, gN)), 2.0);
-    c += (uKeyCol * 0.5 * sha + uAmbSky * 0.5) * mix(col, vec3(lum(col)) * 1.6, 0.35) * g * sSheen * lush * (1.0 - rk) * (1.0 - sandy) * (1.0 - snow) * (0.28 + 0.6 * gz) * (1.0 - smoothstep(1800.0, 5000.0, vDist));
+    c += (uKeyCol * 0.5 * sha + uAmbSky * 0.5) * mix(col, vec3(lum(col)) * 1.6, 0.35) * g * sSheen * lush * (1.0 - rk) * (1.0 - sandy) * (1.0 - snow) * (0.16 + 0.5 * gz) * (1.0 - smoothstep(1800.0, 5000.0, vDist));
   }
 
   // damp ground and snow catch the light
   vec3 H = normalize(V + uKeyDir);
-  float spec = pow(sat(dot(N, H)), 60.0) * wet * 1.4 + pow(sat(dot(N, H)), 24.0) * snow * 0.35;
+  float spec = pow(sat(dot(N, H)), 60.0) * wet * 0.5 + pow(sat(dot(N, H)), 24.0) * snow * 0.35;
   c += uKeyCol * spec * sha;
   if (snow > 0.0 && near > 0.0) {
     float gl = step(0.985, nz(vW.xz / 1.7 + floor(V.xz * 24.0) * 0.013).a) * near;

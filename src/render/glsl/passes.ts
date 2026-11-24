@@ -46,7 +46,7 @@ in vec2 vUv;
 layout(location = 0) out vec4 o;
 uniform sampler2D tColor;
 uniform sampler2D tDepth;
-uniform sampler2D tClouds;
+uniform sampler2D tClouds, tCloudInfo;
 uniform vec2 uCloudRes;
 uniform float uCloudsOn;
 
@@ -66,12 +66,12 @@ vec3 stars(vec3 d){
     vec2 rnd = hash22(id);
     vec2 f = fract(g) - 0.5 - (rnd - 0.5) * 0.7;
     float b = hash12(id + 7.7);
-    float thr = 0.90 - float(k) * 0.06;
+    float thr = 0.955 - float(k) * 0.03;
     if (b > thr){
       float m = (b - thr) / (1.0 - thr);
       float tw = 0.75 + 0.25 * sin(uTime * (1.0 + rnd.x * 2.5) + rnd.y * 40.0);
       float r = length(f) * (1.0 - 0.25 * m);
-      float st = exp(-r * r * 90.0) * (0.25 + 1.9 * m * m) * tw;
+      float st = exp(-r * r * 120.0) * (0.10 + 2.6 * m * m * m) * tw;
       vec3 tint = mix(vec3(1.0, 0.86, 0.72), vec3(0.75, 0.85, 1.0), rnd.x);
       c += st * tint * (k == 0 ? 1.2 : 0.55);
     }
@@ -115,16 +115,16 @@ vec4 cirrus(vec3 d){
   vec2 q = R * p;
   q.x += uTime * 3.0;
   vec2 w = vec2(nz(q / 16000.0).r, nz(q / 16000.0 + 0.41).r) - 0.5;
-  q += w * 2600.0;
-  float a = nz(q / vec2(21000.0, 6200.0)).r;
-  float b = nz(q / vec2(9000.0, 1900.0) + 0.2).r;
-  float c = nz(q / vec2(2600.0, 900.0) + 0.6).r;
-  float n = a * 0.55 + b * 0.32 + c * 0.13;
-  float cov = mix(0.62, 0.4, uCirrus);
-  float m = smoothstep(cov, cov + 0.26, n) * smoothstep(0.015, 0.2, d.y) * min(uCirrus * 1.6, 1.0);
+  q += w * 1500.0;
+  float a = nz(q / vec2(26000.0, 8200.0)).r;
+  float b = nz(q / vec2(15000.0, 1500.0) + 0.2).r;
+  float c = nz(q / vec2(5200.0, 620.0) + 0.6).r;
+  float n = a * 0.52 + b * 0.33 + c * 0.15;
+  float cov = mix(0.62, 0.43, uCirrus);
+  float m = smoothstep(cov, cov + 0.3, n) * smoothstep(0.015, 0.2, d.y) * min(uCirrus * 1.6, 1.0);
   float mu = sat(dot(d, uSunDir));
   vec3 lit = mix(uMid, uHorizon, 0.4) * 0.9 + uSunCol * (0.16 + 0.5 * pow(mu, 8.0)) + uWarm * 0.35;
-  return vec4(lit, m * 0.72);
+  return vec4(lit, m * 0.62);
 }
 
 vec3 fullSky(vec3 d){
@@ -181,7 +181,17 @@ void main(){
     vec4 s10 = texture(tClouds, b + vec2(tx.x, 0.0));
     vec4 s01 = texture(tClouds, b + vec2(0.0, tx.y));
     vec4 s11 = texture(tClouds, b + tx);
-    vec4 cl = mix(mix(s00, s10, f.x), mix(s01, s11, f.x), f.y);
+    vec4 wz = vec4((1.0 - f.x) * (1.0 - f.y), f.x * (1.0 - f.y), (1.0 - f.x) * f.y, f.x * f.y);
+    vec4 dz = vec4(texture(tCloudInfo, b).g, texture(tCloudInfo, b + vec2(tx.x, 0.0)).g, texture(tCloudInfo, b + vec2(0.0, tx.y)).g, texture(tCloudInfo, b + tx).g);
+    float dd = min(dist, 1e6);
+    if (d.y < -1e-4) { float tw = -uCamPos.y / d.y; if (tw > 0.0) dd = min(dd, tw); }
+    vec4 sim = 1.0 / (0.02 + abs(min(dz, vec4(30000.0)) - min(dd, 30000.0)) / max(dd, 30.0));
+    wz *= sim * sim;
+    wz /= dot(wz, vec4(1.0)) + 1e-6;
+    vec4 cl = s00 * wz.x + s10 * wz.y + s01 * wz.z + s11 * wz.w;
+    // what is close is seen through clear air
+    float nearK = smoothstep(14.0, 120.0, dist);
+    cl = mix(vec4(0.0, 0.0, 0.0, 1.0), cl, nearK);
     c = c * cl.a + cl.rgb;
   }
   o = vec4(max(c, vec3(0.0)), 1.0);
@@ -305,9 +315,9 @@ void main(){
   float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
   c += (uLo - 0.5) * 0.30 * (1.0 - smoothstep(0.0, 0.6, l));
   c += (uHi - 0.5) * 0.26 * smoothstep(0.3, 0.95, l);
-  c = (c - 0.5) * uCon + 0.5;
+  c = (c - 0.47) * uCon * 1.1 + 0.47;
   l = dot(c, vec3(0.2126, 0.7152, 0.0722));
-  c = mix(vec3(l), c, uSat);
+  c = mix(vec3(l), c, uSat * 1.1);
   c = agxEotf(c);
   // agx output is display-encoded already (2.2); keep it there
   c = mix(c, uFadeCol, uFade);

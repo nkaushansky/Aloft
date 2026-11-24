@@ -83,6 +83,7 @@ export class Engine {
     tScene: { value: null },
     tDepth: { value: null },
     tClouds: { value: null },
+    tCloudInfo: { value: null },
     uCloudRes: { value: new THREE.Vector2(1, 1) },
     uCloudsOn: { value: 1 },
     uVP: { value: new THREE.Matrix4() },
@@ -272,6 +273,7 @@ export class Engine {
     this.V.tDepth.value = this.rtA.depthTexture;
     this.clouds.render(this.V);
     this.V.tClouds.value = this.clouds.texture;
+    this.V.tCloudInfo.value = this.clouds.info;
     (this.V.uCloudRes.value as THREE.Vector2).set(this.clouds.w, this.clouds.h);
 
     // air + sky + clouds over the land

@@ -8,6 +8,8 @@ export interface WaterStyle {
   deep: string;
   shallow: string;
   clarity: number;
+  /** what the water takes out of light, per channel */
+  absorb: [number, number, number];
   chop: number;
   swell: number;
   glow: string;
@@ -69,6 +71,7 @@ export class Water {
       wDeep: { value: new THREE.Color() },
       wShallow: { value: new THREE.Color() },
       wClarity: { value: 3 },
+      wAbs: { value: new THREE.Vector3(1.2, 0.6, 0.5) },
       wChop: { value: 0.3 },
       wSwell: { value: 0 },
       wGlow: { value: new THREE.Color() },
@@ -88,6 +91,7 @@ export class Water {
     (this.u.wDeep.value as THREE.Color).set(s.deep);
     (this.u.wShallow.value as THREE.Color).set(s.shallow);
     this.u.wClarity.value = s.clarity;
+    (this.u.wAbs.value as THREE.Vector3).set(...s.absorb);
     this.u.wChop.value = s.chop;
     this.u.wSwell.value = s.swell;
     (this.u.wGlow.value as THREE.Color).set(s.glow);
@@ -196,7 +200,7 @@ in float vH;
 layout(location = 0) out vec4 o;
 uniform sampler2D tDepth, tOpaque, tScene, tClouds, wGlowTex;
 uniform mat4 uVP;
-uniform vec3 wDeep, wShallow, wGlow;
+uniform vec3 wDeep, wShallow, wGlow, wAbs;
 uniform float wClarity, wChop, wSwell, wGlowAmt, uSsr, uCloudsOn;
 uniform vec4 wRings[6];
 
@@ -328,12 +332,12 @@ void main(){
   float rp = (rZ - myZ) * dist / myZ;
   rp = min(rp, depth * 3.0 + 1.0);
   vec3 bedc = texture(tOpaque, ruv).rgb;
-  vec3 ext = vec3(1.25, 0.62, 0.5) / wClarity;
+  vec3 ext = wAbs / wClarity;
   vec3 T = exp(-ext * rp);
   float sh = terrainShadow(vW) * cloudShadowAt(vW);
   float nl = max(uKeyDir.y, 0.0);
   vec3 light = uAmbSky * 0.9 + uKeyCol * nl * 0.55 * sh;
-  vec3 body = mix(wDeep, wShallow, exp(-depth * 0.35)) * light;
+  vec3 body = mix(wDeep, wShallow, exp(-depth * 0.55) * 0.7) * light;
   vec3 under = bedc * T + body * (1.0 - T);
   // light through the thin tops of swells
   if (wSwell > 0.0){
@@ -348,8 +352,13 @@ void main(){
   vec3 H = normalize(V + uKeyDir);
   float rough = mix(260.0, 34.0, smoothstep(40.0, 2500.0, dist));
   float sp = pow(sat(dot(Ng, H)), rough);
-  float gl = 0.35 + 1.3 * smoothstep(0.55, 0.9, nz(vW.xz / 3.1 - wd * uTime * 0.1).a * nz(vW.xz / 7.0 + uTime * 0.05).r * 1.9);
-  c += uKeyCol * sp * gl * sh * (0.6 + 2.2 * smoothstep(0.35, 0.02, uKeyDir.y)) * 1.1;
+  // a broad soft lobe stretched toward the sun: the road of light
+  vec3 Nw = normalize(vec3(Ng.x * 0.5, 1.0, Ng.z * 0.5));
+  float sp2 = pow(sat(dot(Nw, H)), mix(90.0, 26.0, smoothstep(20.0, 1800.0, dist)));
+  float tw = nz(vW.xz / 23.0 - wd * uTime * 0.02).a * 0.5 + nz(vW.xz / 5.3 + uTime * 0.03).a * 0.5;
+  float gl = 0.35 + 1.5 * smoothstep(0.5, 0.85, tw);
+  float lowSun = smoothstep(0.35, 0.02, uKeyDir.y);
+  c += uKeyCol * sh * (sp * gl * (0.6 + 2.2 * lowSun) * 1.1 + sp2 * (0.06 + 0.34 * lowSun) * (0.45 + 0.9 * smoothstep(0.42, 0.7, tw)));
 
   // --- the glowing currents ---------------------------------------------------
   if (wGlowAmt > 0.0){
@@ -357,17 +366,18 @@ void main(){
     vec2 q = vW.xz;
     float n1 = nz(q / 140.0 + wd * uTime * -0.006).r;
     float n2 = nz(q / 37.0 + vec2(uTime * 0.011, -uTime * 0.007)).r;
-    float fil = 1.0 - smoothstep(0.0, 0.09, abs(n1 * 0.65 + n2 * 0.35 - 0.5));
+    float fil = 1.0 - smoothstep(0.0, 0.035, abs(n1 * 0.62 + n2 * 0.38 - 0.5));
+    float bloomP = smoothstep(0.5, 0.72, nz(q / 420.0 - wd * uTime * 0.003).r);
     float pts = smoothstep(0.93, 1.0, nz(q / 2.7).a) * (0.5 + 0.5 * sin(uTime * 2.0 + nz(q / 9.0).a * 40.0)) * f1;
     float crest = smoothstep(0.1, 1.6, vH) * 0.35;
     float birdD = length(vW.xz - uBirdPos.xz);
     float low = smoothstep(16.0, 1.5, uBirdPos.y - vW.y);
     float wake = low * exp(-birdD * birdD / 60.0) * 1.5;
-    float gA = band * (0.12 + fil * 0.95 + crest) + pts * (0.12 + band) + wake * (0.3 + fil);
+    float gA = band * band * (0.025 + fil * (0.16 + 0.55 * bloomP) + crest * 0.25) + pts * (0.05 + 0.5 * band) + wake * (0.12 + fil * 0.6);
     float night = sat(uStars * 1.4);
     c += wGlow * gA * 0.85 * night * wGlowAmt * (1.0 - 0.5 * F);
     // shoreline sparks
-    c += wGlow * smoothstep(2.4, 0.1, depth) * (0.35 + 0.65 * fil) * 0.55 * night * wGlowAmt * step(0.01, depth);
+    c += wGlow * smoothstep(1.6, 0.1, depth) * (0.2 + 0.8 * fil) * 0.22 * night * wGlowAmt * step(0.01, depth);
   }
 
   // --- shore -----------------------------------------------------------------

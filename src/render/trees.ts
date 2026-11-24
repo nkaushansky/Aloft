@@ -215,7 +215,7 @@ class TreeGeo {
 }
 
 /** Trees are unit-height; instances scale them. */
-function buildTree(form: TreeKind['form'], lod: 0 | 1, seed: number): THREE.BufferGeometry {
+function buildTree(form: TreeKind['form'] | 'old' | 'oldbirch' | 'oldacacia', lod: 0 | 1, seed: number): THREE.BufferGeometry {
   const g = new TreeGeo();
   const rng = makeRng(seed * 77 + 13);
   const near = lod === 0;
@@ -254,6 +254,42 @@ function buildTree(form: TreeKind['form'], lod: 0 | 1, seed: number): THREE.Buff
         sph(9, 0, 0.62, 0, 0.23, 0.23, 0.23, 0.2, 0, 0.75);
         sph(3, 0.03, 0.8, 0, 0.1, 0.08, 0.1, 0.16, 0, 0.8);
       }
+      break;
+    }
+    case 'old': {
+      g.tube([[0, -0.03, 0, 0.1], [0.01, 0.04, 0, 0.066], [0.02, 0.18, 0.01, 0.052], [0, 0.36, 0, 0.044], [-0.02, 0.5, 0, 0.03]], 9);
+      for (let b = 0; b < 11; b++) {
+        const a = b * 2.4 + rng() * 0.3;
+        const y0 = 0.22 + (b / 11) * 0.26;
+        const r = 0.24 + rng() * 0.12;
+        const y1 = y0 + 0.1 + rng() * 0.16;
+        g.tube([[0, y0, 0, 0.026], [Math.cos(a) * r * 0.45, (y0 + y1) / 2 - 0.01, Math.sin(a) * r * 0.45, 0.016], [Math.cos(a) * r, y1, Math.sin(a) * r, 0.006]], 6);
+        sph(16, Math.cos(a) * r, y1 + 0.04, Math.sin(a) * r, 0.15, 0.1, 0.15, 0.058, 0, 0.4);
+      }
+      sph(60, 0, 0.66, 0, 0.32, 0.24, 0.32, 0.06, 0, 0.6);
+      sph(26, 0, 0.86, 0, 0.2, 0.12, 0.2, 0.055, 0, 0.5);
+      break;
+    }
+    case 'oldbirch': {
+      g.tube([[0, -0.02, 0, 0.034], [0.012, 0.3, 0, 0.024], [-0.01, 0.62, 0.01, 0.014], [0.01, 0.94, 0, 0.004]], 8);
+      for (let i = 0; i < 190; i++) {
+        const t = rng();
+        const y = 0.26 + t * 0.7;
+        const r = 0.2 * Math.sin(Math.PI * Math.min(1, 0.16 + t * 0.84)) * (0.4 + 0.6 * Math.sqrt(rng()));
+        const a = i * 2.4;
+        g.card({ p: [Math.cos(a) * r, y, Math.sin(a) * r], n: [Math.cos(a) * 0.8, 0.55, Math.sin(a) * 0.8], s: 0.042 + rng() * 0.016, sy: 0.056, shade: 0.62 + 0.4 * t * (r / 0.2 + 0.3) }, 1, 1, rng() * 0.6 - 0.3);
+      }
+      break;
+    }
+    case 'oldacacia': {
+      g.tube([[0, -0.02, 0, 0.06], [0.04, 0.18, 0, 0.044], [-0.02, 0.4, 0.03, 0.034], [0.05, 0.58, 0, 0.02]], 9);
+      for (let b = 0; b < 9; b++) {
+        const a = b * 2.4;
+        const r = 0.26 + 0.22 * ((b * 0.37) % 1);
+        g.tube([[0, 0.38 + b * 0.01, 0, 0.022], [Math.cos(a) * r * 0.5, 0.62, Math.sin(a) * r * 0.5, 0.012], [Math.cos(a) * r, 0.8, Math.sin(a) * r, 0.004]], 5);
+        sph(20, Math.cos(a) * r, 0.83 + 0.03 * Math.sin(b), Math.sin(a) * r, 0.2, 0.045, 0.2, 0.06, 1, 0.3);
+      }
+      sph(40, 0, 0.88, 0, 0.36, 0.06, 0.36, 0.065, 1, 0.3);
       break;
     }
     case 'birch': {
@@ -308,6 +344,41 @@ function buildTree(form: TreeKind['form'], lod: 0 | 1, seed: number): THREE.Buff
       }
       break;
     }
+    case 'bush': {
+      sph(near ? 16 : 3, 0, 0.42, 0, 0.5, 0.36, 0.5, near ? 0.2 : 0.42, 1, 0.5);
+      break;
+    }
+    case 'sage': {
+      sph(near ? 12 : 3, 0, 0.4, 0, 0.52, 0.34, 0.52, near ? 0.22 : 0.44, 1, 0.4);
+      break;
+    }
+    case 'rock': {
+      const R = near ? 5 : 3;
+      const S = near ? 9 : 6;
+      const base = g.pos.length / 3;
+      for (let i = 0; i <= R; i++) {
+        const t = (i / R) * Math.PI * 0.78;
+        for (let q = 0; q <= S; q++) {
+          const a = ((q % S) / S) * Math.PI * 2;
+          const k = 0.8 + 0.34 * Math.abs(Math.sin(a * 2.3 + i * 1.9 + seed)) + (q % S === 0 ? 0.05 : 0);
+          const x = Math.sin(t) * Math.cos(a) * 0.8 * k;
+          const z = Math.sin(t) * Math.sin(a) * 0.62 * k;
+          const y = Math.cos(t) * 0.5 * k;
+          g.pos.push(x, y, z);
+          const l = Math.hypot(x / 0.64, y / 0.25, z / 0.38) || 1;
+          g.nor.push(x / 0.64 / l, y / 0.25 / l, z / 0.38 / l);
+          g.cor.push(0, 0, 0);
+          g.uv.push(q / S, t * 0.8);
+          g.mis.push(0.55 + 0.45 * Math.max(0, y * 2), 0);
+        }
+      }
+      for (let i = 0; i < R; i++)
+        for (let q = 0; q < S; q++) {
+          const a = base + i * (S + 1) + q;
+          g.idx.push(a, a + 1, a + S + 1, a + 1, a + S + 2, a + S + 1);
+        }
+      break;
+    }
     case 'juniper': {
       g.tube([[0, 0, 0, 0.09], [0.08, 0.2, 0.03, 0.065], [0.02, 0.42, -0.04, 0.045], [0.1, 0.62, 0, 0.02]], near ? 6 : 3);
       const c: Array<[number, number, number, number]> = [[0.12, 0.72, 0, 0.32], [-0.22, 0.56, 0.1, 0.26], [0.26, 0.5, -0.16, 0.24], [0, 0.92, 0.05, 0.2]];
@@ -345,6 +416,36 @@ function buildTree(form: TreeKind['form'], lod: 0 | 1, seed: number): THREE.Buff
   return g.build();
 }
 
+/** A single named tree, grown large: a landmark rather than a forest. */
+export function makeGreatTree(form: 'old' | 'oldbirch' | 'oldacacia', kind: TreeKind, size: number, atlas: THREE.Texture): { mesh: THREE.Mesh; shadow: THREE.Mesh } {
+  const base = buildTree(form, 0, 91);
+  const g = new THREE.InstancedBufferGeometry();
+  for (const n of Object.keys(base.attributes)) g.setAttribute(n, base.attributes[n]);
+  g.setIndex(base.index);
+  const a = new THREE.InstancedBufferAttribute(new Float32Array([0, 0, 0, size]), 4);
+  g.setAttribute('iA', a);
+  g.setAttribute('iB', new THREE.InstancedBufferAttribute(new Float32Array([0.7, 0.4, 0.5, 1]), 4));
+  g.instanceCount = 1;
+  const u: Uniforms = {
+    tLeaf: { value: atlas },
+    kL0: { value: new THREE.Color(kind.leaf[0]) },
+    kL1: { value: new THREE.Color(kind.leaf[1]) },
+    kL2: { value: new THREE.Color(kind.leaf[2]) },
+    kBark: { value: new THREE.Color(kind.bark) },
+    kBirch: { value: form === 'oldbirch' ? 1 : 0 },
+    uTreeFar: { value: 1e6 },
+    uMidLod: { value: 0 },
+  };
+  const mesh = new THREE.Mesh(g, worldMaterial(VERT, FRAG, u, { side: THREE.DoubleSide, alphaToCoverage: true }));
+  const shadow = new THREE.Mesh(g, worldMaterial('#define SHADOW\n' + VERT, SHADOW_FRAG, u, { side: THREE.DoubleSide }));
+  mesh.frustumCulled = shadow.frustumCulled = false;
+  mesh.userData.place = (x: number, y: number, z: number) => {
+    (a.array as Float32Array).set([x, y, z, size]);
+    a.needsUpdate = true;
+  };
+  return { mesh, shadow };
+}
+
 const TILE = 64;
 const MAX_NEAR = 2600;
 const MAX_MID = 34000;
@@ -378,8 +479,9 @@ export class Trees {
   private noise = new Noise(1);
   private seed = 1;
   private gap = 9;
+  private treeKinds = 1;
   private clear: Array<{ x: number; z: number; r: number }> = [];
-  private readonly atlas: THREE.Texture;
+  readonly atlas: THREE.Texture;
   private readonly frustum = new THREE.Frustum();
   private readonly pv = new THREE.Matrix4();
   private readonly box = new THREE.Box3();
@@ -416,6 +518,7 @@ export class Trees {
     this.clear = clear;
     this.noise = new Noise(seed + 515);
     this.lastPos.set(1e9, 0, 0);
+    this.treeKinds = Math.max(1, kinds.filter((k) => !k.per).length);
     kinds.forEach((k, i) => {
       const mk = (lod: 0 | 1, max: number) => {
         const base = buildTree(k.form, lod, i + 3);
@@ -486,7 +589,7 @@ export class Trees {
         const patch = this.noise.fbm(x / 260, z / 260, 2) * 0.55;
         let p = Math.min(0.9999, Math.max(0, pick + patch));
         let k = 0;
-        for (; k < this.species.length - 1; k++) {
+        for (; k < this.treeKinds - 1; k++) {
           p -= this.species[k].kind.weight;
           if (p < 0) break;
         }
@@ -494,6 +597,38 @@ export class Trees {
         const edge = Math.min(1, 0.72 + m * 0.5);
         const s = (sp.size[0] + (sp.size[1] - sp.size[0]) * sz) * edge;
         lists[k].push(x, y - 0.15, z, s, yaw * 6.283, tint, rng(), 0.85 + rng() * 0.35);
+        if (y < minY) minY = y;
+        if (y + s > maxY) maxY = y + s;
+      }
+    }
+    // the small things: shrubs and stones
+    for (let k = 0; k < this.species.length; k++) {
+      const sp = this.species[k].kind;
+      if (!sp.per) continue;
+      const want = sp.per * (TILE * TILE) / 10000 * this.density;
+      const cnt = Math.floor(want) + (rng() < want % 1 ? 1 : 0);
+      for (let c = 0; c < cnt; c++) {
+        // gather in loose drifts
+        const x = ti * TILE + rng() * TILE;
+        const z = tj * TILE + rng() * TILE;
+        const r1 = rng();
+        const sz = rng();
+        const a = rng();
+        const tint = rng();
+        const y = hf.heightAt(x, z);
+        if (y < (sp.where === 'shore' ? -0.3 : 0.6)) continue;
+        const lush = mask.at(x, z, 1);
+        const rk = mask.at(x, z, 2);
+        const drift = this.noise.fbm(x / 90 + k * 13, z / 90, 2) + 0.35;
+        if (r1 > drift * 1.5) continue;
+        if (sp.where === 'lush' && (lush < 0.4 || rk > 0.5)) continue;
+        if (sp.where === 'dry' && (lush > 0.6 || rk > 0.45)) continue;
+        if (sp.where === 'shore' && y > 2.2) continue;
+        let blocked = false;
+        for (const q of this.clear) if ((x - q.x) ** 2 + (z - q.z) ** 2 < q.r * q.r * 0.4) blocked = true;
+        if (blocked) continue;
+        const s = sp.size[0] + (sp.size[1] - sp.size[0]) * sz * sz;
+        lists[k].push(x, y - 0.06 * s, z, s, a * 6.283, tint, rng(), 0.8 + rng() * 0.45);
         if (y < minY) minY = y;
         if (y + s > maxY) maxY = y + s;
       }
@@ -551,6 +686,7 @@ export class Trees {
             const a = t.data[k];
             let cnt = a.length / 8;
             if (cnt === 0) continue;
+            if (s.kind.per && d > this.farR * 0.5) continue;
             if (isNear) {
               cnt = Math.min(cnt, MAX_NEAR - s.nNear);
               if (cnt <= 0) continue;
@@ -691,7 +827,8 @@ void main(){
     col *= mix(0.8, 1.12, smoothstep(0.3, 0.95, vH));
   } else {
     float b = nz(vec2(vUv.x * 0.5 + vTint.x, vUv.y * 1.3)).b;
-    col = kBark * (0.6 + 0.7 * b);
+    float b2 = nz(vW.xz / 2.7 + vW.y / 3.1).b;
+    col = kBark * (0.5 + 0.5 * b + 0.45 * b2) * mix(0.8, 1.15, vTint.x);
     if (kBirch > 0.5) col = mix(col, vec3(0.05), smoothstep(0.68, 0.74, nz(vec2(vUv.x * 0.2 + vTint.x, vUv.y * 7.0)).r) * 0.85);
   }
   float ao = vTint.y;

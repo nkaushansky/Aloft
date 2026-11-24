@@ -227,7 +227,7 @@ function copper(seed: number): Land {
     landmarks: [
       { id: 'viaduct', name: 'The Nine Arches', kind: 'viaduct', t: 0.45, off: -80, yaw: Math.PI / 2, reach: 220 },
       { id: 'oldtree', name: 'The Old Tree', kind: 'oldtree', t: 0.2, off: 210, reach: 150, pad: 46 },
-      { id: 'falls', name: 'Threadfall', kind: 'waterfall', t: 0.72, off: 260, reach: 200 },
+      { id: 'tower', name: 'The Roofless Tower', kind: 'waterfall', t: 0.72, off: 260, reach: 200, pad: 30 },
     ],
   };
 }
@@ -260,7 +260,10 @@ function stair(seed: number): Land {
     const d = rd(x, z);
     // the high road: a chain of saddles between summits
     const corridor = smoothstep(150, 1500, d + 240 * n.fbm(x / 700, z / 700, 2));
-    h *= lerp(0.46, 1.06, corridor);
+    h *= lerp(0.7, 1.06, corridor);
+    // the stair: cross-ridges that stand clear of the cloud, one after another
+    const step = Math.pow(0.5 + 0.5 * Math.cos(z / 255 + 1.4 * n.n(x / 900, z / 900) + x / 1400), 3);
+    h += step * (1 - corridor) * 330 * (0.6 + 0.6 * m.n(x / 500 + 3, z / 700));
     h += 60 * n.fbm(x / 420, z / 420, 3) * smoothstep(100, 500, h);
     // gullies
     const gx = n.n(x / 900 + 3, z / 900) * 0.5;
@@ -492,7 +495,7 @@ function wintering(seed: number): Land {
     const c1 = Math.abs(n.n(wx / 760, wz / 2900));
     const c2 = Math.abs(m.n(wx / 420 + 5, wz / 1900));
     const c3 = Math.abs(n.n(wx / 210 + 9, wz / 900));
-    let h = 1.3 + 1.6 * n.fbm(x / 260, z / 260, 3);
+    let h = 1.9 + 1.5 * n.fbm(x / 260, z / 260, 3);
     h = lerp(-3.4, h, smoothstep(0.05, 0.2, c1));
     h = lerp(-2.2, h, smoothstep(0.03, 0.13, c2));
     h = lerp(-1.2, h, smoothstep(0.02, 0.09, c3));
@@ -522,7 +525,7 @@ function wintering(seed: number): Land {
       const g = m.fbm(x / 160, z / 160, 2);
       const dry = smoothstep(1.6, 4, h);
       out[0] = clamp(dry * smoothstep(0.05, 0.4, f) * 0.6 * (1 - smoothstep(0.5, 0.8, slope)), 0, 1);
-      out[1] = clamp(smoothstep(0.15, 1.2, h) * (0.8 + 0.3 * g), 0, 1);
+      out[1] = clamp(smoothstep(0.15, 0.9, h) * (0.85 + 0.3 * g), 0, 1);
       out[2] = smoothstep(0.7, 1.0, slope);
       out[3] = 1 - smoothstep(0.2, 1.3, Math.abs(h - 0.3));
     },

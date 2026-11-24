@@ -103,9 +103,11 @@ function stepAir(s: BirdState, input: FlightInput, dt: number, cfg: Config, w: W
   const cush = smoothstep(cfg.cushionHeight, 0.5, h0) * cfg.cushion;
   if (vy < 0) vy *= 1 - cush;
   s.climbRate = vy;
-  s.position.x += (fwd.x * s.airspeed + w.wind.x * cfg.windCarry) * dt;
+  // rising air travels with you: inside it, the wind mostly lets go
+  const carry = cfg.windCarry * (1 - cfg.liftHold * smoothstep(0.6, 2.6, s.lift));
+  s.position.x += (fwd.x * s.airspeed + w.wind.x * carry) * dt;
   s.position.y += vy * dt;
-  s.position.z += (fwd.z * s.airspeed + w.wind.z * cfg.windCarry) * dt;
+  s.position.z += (fwd.z * s.airspeed + w.wind.z * carry) * dt;
 
   // --- breath comes back ----------------------------------------------------
   if (!wants) {

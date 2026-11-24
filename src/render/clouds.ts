@@ -147,7 +147,20 @@ void main(){
   vec3 ray = viewRay(vUv);
   vec3 d = normalize(ray);
   float z = texture(tDepth, vUv).r;
-  float tMax = z >= 0.9999999 ? 1e6 : length(ray) * linZ(z);
+  float lz = linZ(z);
+  // the bird and whatever is at arm's length never punch holes in the weather
+  if (z < 0.9999999 && lz < 28.0){
+    // borrow the background's depth from just beside the bird
+    vec2 px = 1.0 / vec2(textureSize(tDepth, 0));
+    for (int k = 0; k < 10; k++){
+      float a = float(k) * 2.4 + 0.6;
+      float r = 9.0 + float(k) * 6.5;
+      float z2 = texture(tDepth, vUv + vec2(cos(a), sin(a)) * r * px).r;
+      float l2 = linZ(z2);
+      if (z2 >= 0.9999999 || l2 > 28.0){ z = z2; lz = l2; break; }
+    }
+  }
+  float tMax = (z >= 0.9999999 || lz < 28.0) ? 1e6 : length(ray) * lz;
   if (d.y < -1e-4){ float tw = -uCamPos.y / d.y; if (tw > 0.0) tMax = min(tMax, tw); }
 
   float ign = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
@@ -353,6 +366,10 @@ export class Clouds {
     });
   }
 
+  get info(): THREE.Texture {
+    return this.rtRaw.textures[1];
+  }
+
   get texture(): THREE.Texture {
     return this.hist[this.cur].texture;
   }
@@ -469,6 +486,21 @@ export class Clouds {
     this.u.uSea.value = s.sea ? 1 : 0;
     (this.u.uRain.value as THREE.Vector4).set(s.rain?.x ?? 0, s.rain?.z ?? 0, s.rain?.r ?? 1, s.rain?.amt ?? 0);
     this.reset = true;
+  }
+
+  /** Soft coverage over a world point, for things that need to feel a cloud. */
+  coverage(x: number, z: number): number {
+    const n = Clouds.WN;
+    const half = G.uWeatherHalf.value;
+    const i = Math.floor(((x + G.uCloudOff.value.x) / (2 * half) + 0.5) * n);
+    const j = Math.floor(((z + G.uCloudOff.value.y) / (2 * half) + 0.5) * n);
+    if (i < 0 || j < 0 || i >= n || j >= n) return 0;
+    return (this.weather.image.data as Uint8Array)[(j * n + i) * 4 + 3] / 255;
+  }
+
+  /** Lightning far off: a brief glow inside the cloud. */
+  flash(v: number): void {
+    (this.u.uFlash.value as THREE.Color).setRGB(v * 0.9, v * 0.95, v * 1.1);
   }
 
   render(V: Uniforms): void {

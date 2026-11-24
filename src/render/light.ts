@@ -82,7 +82,18 @@ export function dirFromAzEl(azDeg: number, elDeg: number, out: THREE.Vector3): T
 const sunV = new THREE.Vector3();
 const moonV = new THREE.Vector3();
 
-export function applyLight(keys: Key[], p: number, frame: Frame): void {
+/** 0..1: pulls any land down into one shared night (used while sleeping). */
+const NIGHT = {
+  zen: new THREE.Color('#040a1c'),
+  mid: new THREE.Color('#0a1632'),
+  hor: new THREE.Color('#1c2e4e'),
+  warm: new THREE.Color('#1c2e4e'),
+  key: new THREE.Color('#9cb8f0'),
+  ambS: new THREE.Color('#304c8c'),
+  ambG: new THREE.Color('#16243c'),
+};
+
+export function applyLight(keys: Key[], p: number, frame: Frame, night = 0): void {
   let i = 0;
   while (i < keys.length - 2 && keys[i + 1].p <= p) i++;
   const a = keys[i];
@@ -142,6 +153,27 @@ export function applyLight(keys: Key[], p: number, frame: Frame): void {
   mixHex(a.lo ?? '#808080', b.lo ?? '#808080', t, 1, frame.lo);
   mixHex(a.hi ?? '#808080', b.hi ?? '#808080', t, 1, frame.hi);
   frame.sunEl = el;
+  if (night > 0) {
+    const n = night;
+    G.uZenith.value.lerp(NIGHT.zen, n);
+    G.uMid.value.lerp(NIGHT.mid, n);
+    G.uHorizon.value.lerp(NIGHT.hor, n);
+    G.uWarm.value.lerp(NIGHT.warm, n);
+    G.uAnti.value.lerp(NIGHT.mid, n);
+    G.uSunCol.value.multiplyScalar(1 - n);
+    c0.copy(NIGHT.key).multiplyScalar(1.0 * KEY_GAIN);
+    G.uKeyCol.value.lerp(c0, n);
+    c0.copy(NIGHT.ambS).multiplyScalar(0.5 * AMB_GAIN);
+    G.uAmbSky.value.lerp(c0, n);
+    c0.copy(NIGHT.ambG).multiplyScalar(0.5 * AMB_GAIN);
+    G.uAmbGnd.value.lerp(c0, n);
+    G.uStars.value = L(G.uStars.value, 1.1, n);
+    dirFromAzEl(-30 + 40 * n, 30, moonV);
+    G.uMoonDir.value.lerp(moonV, n).normalize();
+    G.uKeyDir.value.lerp(moonV, n).normalize();
+    frame.exp = L(frame.exp, 1.45, n);
+    G.uCirrus.value *= 1 - 0.7 * n;
+  }
   frame.stars = G.uStars.value;
 }
 

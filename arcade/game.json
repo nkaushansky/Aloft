@@ -1,0 +1,13 @@
+{
+  "title": "Aloft",
+  "tagline": "A young crane, one day behind the flock, following its voice south.",
+  "status": "wip",
+  "kind": "game",
+  "thumb": "thumb.jpg",
+  "controls": ["keyboard", "mouse", "touch", "gamepad"],
+  "mobile": false,
+  "external_url": null,
+  "featured": false,
+  "version": "1.1.0",
+  "updated": "2026-11-24"
+}

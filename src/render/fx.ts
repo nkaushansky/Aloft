@@ -38,6 +38,8 @@ export class Fx {
   private readonly fBuf: THREE.InstancedBufferAttribute;
   private readonly call: THREE.Mesh;
   private readonly callU: Uniforms;
+  private readonly glint: THREE.Mesh;
+  private readonly glintU: Uniforms;
   private readonly trail: THREE.Mesh;
   private readonly trPos: Float32Array;
   private readonly trA: Float32Array;
@@ -190,6 +192,19 @@ export class Fx {
     this.call.frustumCulled = false;
     this.group.add(this.call);
 
+    // --- the flock, when it answers: a glint on the air where they are
+    {
+      const q = quad();
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', q.pos);
+      g.setIndex(q.idx);
+      this.glintU = { ...view, gP: { value: new THREE.Vector4(0, 0, 0, 0) } };
+      this.glint = new THREE.Mesh(g, worldMaterial(GLINT_V, GLINT_F, this.glintU, { ...blend, blending: THREE.AdditiveBlending, depthTest: false }));
+      this.glint.frustumCulled = false;
+      this.glint.visible = false;
+      this.group.add(this.glint);
+    }
+
     // --- wingtip threads
     {
       const N = 64;
@@ -245,6 +260,12 @@ export class Fx {
   sendCall(x: number, y: number, z: number): void {
     (this.callU.cA.value as THREE.Vector4).set(x, y, z, G.uTime.value);
     this.reveal = 1;
+  }
+
+  /** light the air where the flock is */
+  setGlint(x: number, y: number, z: number, amt: number): void {
+    (this.glintU.gP.value as THREE.Vector4).set(x, y, z, amt);
+    this.glint.visible = amt > 0.004;
   }
 
   /** kind 0 water spray, 1 golden spark, 2 down */
@@ -608,6 +629,39 @@ void main(){
   float a = (rim * bands * 0.4 + hit * 0.9 + sheet) * vis * pow(max(1.0 - vT, 0.0), 1.6) * smoothstep(0.0, 0.05, vT);
   vec3 c = uHorizon * 0.5 + uWarm * 0.45 + uKeyCol * 0.2;
   o = vec4(c * a, 1.0);
+}
+`;
+
+const GLINT_V = /* glsl */ `
+${FULL}
+uniform vec4 gP;
+out vec2 vQ; out vec3 vW;
+void main(){
+  float d = length(gP.xyz - uCamPos);
+  vec3 right = vec3(viewMatrix[0][0], viewMatrix[1][0], viewMatrix[2][0]);
+  float s = max(60.0, d * 0.075);
+  vW = gP.xyz + (right * position.x * 0.62 + vec3(0.0, 1.0, 0.0) * position.y * 1.5) * s;
+  vQ = position.xy;
+  gl_Position = projectionMatrix * viewMatrix * vec4(vW, 1.0);
+}
+`;
+const GLINT_F = /* glsl */ `
+${FULL}
+${SOFT}
+in vec2 vQ; in vec3 vW;
+uniform vec4 gP;
+layout(location = 0) out vec4 o;
+void main(){
+  float r = length(vQ * vec2(1.0, 1.0));
+  // a soft star with a tall thread of light through it, so it shows over a ridge
+  float core = exp(-r * r * 9.0);
+  float thread = exp(-vQ.x * vQ.x * 420.0) * exp(-vQ.y * vQ.y * 3.2) * smoothstep(1.0, 0.6, abs(vQ.y));
+  float z = texture(tDepth, gl_FragCoord.xy / uRes).r;
+  float oz = z >= 0.9999999 ? 1e6 : linZ(z);
+  float vis = smoothstep(-40.0, 120.0, oz - 1.0 / gl_FragCoord.w);
+  float pulse = 0.82 + 0.18 * sin(uTime * 1.9);
+  vec3 c = vec3(1.0, 0.84, 0.6) * (0.35 + lum(uHorizon) * 0.5);
+  o = vec4(c * (core * 0.8 + thread * 0.75) * gP.w * pulse * vis, 1.0);
 }
 `;
 

@@ -16,6 +16,7 @@ npm install
 npm run dev            # Vite dev server
 npm run build          # typecheck + static site in dist/ (relative paths, host anywhere)
 npm run build:single   # the whole game as one HTML file in dist-single/
+npm run build:arcade   # nk00.com/arcade/aloft (staging), hub card included
 npm run test:sim       # flight model checks
 npm run test:journey   # flies all six lands headlessly
 ```

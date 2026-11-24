@@ -58,5 +58,10 @@ must pass it. Practical rules that follow from it:
   script can step `__game.frame(dt)` by hand
 - `npm run build` — typecheck + production build to `dist/`
 - `npm run build:single` — one self-contained `dist-single/index.html`
+- `npm run build:arcade` — `dist-arcade/`, deployed to nk00.com/arcade/aloft
+  (the staging area; use the dreamhost-upload skill, area `arcade`). Bump
+  `version`/`updated` in `arcade/game.json` with each deploy
+- `?day=N` on any build opens the road to land N
 - `npm run test:sim` — flight model promises
 - `npm run test:journey` — flies every land end to end on autopilot
+- `npm run test:feathers` — feathers come to someone who isn't chasing them

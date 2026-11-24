@@ -1,7 +1,7 @@
 {
   "name": "aloft",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Aloft \u2014 a late young crane, six lands south. A quiet flight.",
   "type": "module",
   "scripts": {
@@ -10,7 +10,9 @@
     "preview": "vite preview",
     "test:sim": "esbuild tests/simcheck.ts --bundle --platform=node --log-level=warning --outfile=node_modules/.cache/simcheck.cjs && node node_modules/.cache/simcheck.cjs",
     "test:journey": "esbuild tests/journey.ts --bundle --platform=node --log-level=warning --outfile=node_modules/.cache/journey.cjs && node node_modules/.cache/journey.cjs",
-    "build:single": "vite build --mode single"
+    "build:single": "vite build --mode single",
+    "test:feathers": "esbuild tests/feathers.ts --bundle --platform=node --log-level=warning --outfile=node_modules/.cache/feathers.cjs && node node_modules/.cache/feathers.cjs",
+    "build:arcade": "tsc --noEmit && vite build --mode arcade"
   },
   "dependencies": {
     "@fontsource/forum": "^5.3.0",

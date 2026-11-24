@@ -14,10 +14,19 @@ import { Autopilot } from '../sim/autopilot';
 import { bakeAsync } from '../world/baker';
 import type { BakedLand } from '../world/generate';
 import { LAND_ORDER, LandId } from '../world/lands';
-import { Feather, layFeathers } from './trails';
+import { Trails } from './trails';
 import { MOVEMENTS } from './days';
 import { SaveData, load, save, landAt, DayRecord } from './save';
 import { AudioEngine, AudioFrame } from '../audio/engine';
+
+/** The arcade's own counter, when it's there. */
+const track = (name: string, props: Record<string, unknown> = {}): void => {
+  try {
+    (window as unknown as { track?: (n: string, p: object) => void }).track?.(name, { game: 'aloft', ...props });
+  } catch {
+    /* never worth a hiccup */
+  }
+};
 
 type Phase = 'boot' | 'title' | 'wake' | 'fly' | 'arrive' | 'roost' | 'night' | 'finale' | 'photo';
 
@@ -75,7 +84,7 @@ export class Game {
   private fadeTarget = 1;
   private fadeRate = 0.5;
 
-  private feathers: Feather[] = [];
+  private trails: Trails | null = null;
   private readonly fdata = new Float32Array(160 * 4);
   private featherCount = 0;
   private motif = 0;
@@ -109,6 +118,7 @@ export class Game {
   private breathLow = false;
 
   constructor(canvas: HTMLCanvasElement, uiRoot: HTMLElement) {
+    this.skipAhead();
     this.engine = new Engine(canvas, this.pickQuality());
     this.world = new World(this.engine);
     this.ui = new Ui(uiRoot);
@@ -161,6 +171,15 @@ export class Game {
   }
 
   private muted = false;
+
+  /** Staging convenience: `?day=4` opens the road that far, once. */
+  private skipAhead(): void {
+    const n = parseInt(new URLSearchParams(location.search).get('day') ?? '', 10);
+    if (!(n >= 1 && n <= 6)) return;
+    this.data.day = Math.max(this.data.day, n - 1);
+    this.data.companions = Math.max(this.data.companions, [0, 2, 4, 6, 7, 8][n - 1]);
+    save(this.data);
+  }
 
   private freshRec(): DayRecord {
     return { distance: 0, highest: 0, longestGlide: 0, feathers: 0, feathersTotal: 0, seconds: 0 };
@@ -226,11 +245,19 @@ export class Game {
     this.landIdx = LAND_ORDER.indexOf(id);
     const mv = this.world.mv;
     this.audio.setLand(id, mv.music);
-    this.feathers = layFeathers(this.world);
+    this.trails = new Trails({
+      seed: this.world.land.seed,
+      route: this.world.land.route,
+      terrain: this.world.terrain,
+      thermals: this.world.thermals,
+      wind: this.world.wind,
+      roadThermals: mv.air.thermals,
+      landmarks: b.landmarks,
+    });
     this.featherCount = 0;
     this.motif = 0;
     this.rec = this.freshRec();
-    this.rec.feathersTotal = this.feathers.length;
+    this.rec.feathersTotal = this.trails.feathers.length;
     this.discovered.clear();
     this.progress = 0;
     this.lightP = 0;
@@ -478,6 +505,7 @@ export class Game {
 
   private beginFly(): void {
     this.go('fly');
+    track('game_start', { mode: this.free ? 'free' : 'journey', land: this.world.land.id });
     this.ui.hush();
     this.ui.hideVerse();
     this.ui.hideChapter();
@@ -503,7 +531,8 @@ export class Game {
   // ------------------------------------------------------------------- verbs
   private leadPos(out: THREE.Vector3): THREE.Vector3 {
     const r = this.world.land.route;
-    const t = Math.min(1, this.leadT + LEAD[this.world.land.id] / r.total);
+    // at Wintering they are already there
+    const t = this.world.land.id === 'wintering' ? 1 : Math.min(1, this.leadT + LEAD[this.world.land.id] / r.total);
     const [x, z] = r.at(t);
     const y = this.world.surfaceY(x, z);
     const h = this.world.land.id === 'stair' ? Math.max(y + 190, 900) : y + 170 - 120 * sm(0.94, 1, t);
@@ -531,34 +560,78 @@ export class Game {
     if (this.phase === 'wake' && this.world.land.id === 'stillmere' && this.readyToLeave) {
       const kbd = this.input.device !== 'touch';
       this.ui.hush();
-      this.at(this.t + 4.2, () => this.ui.whisper(kbd ? '<kbd>Space</kbd> to rise' : 'Hold wings to rise', 0));
+      this.at(this.t + 2.6, () => this.ui.whisper('That light is where they are.', 0));
+      this.at(this.t + 7.2, () => this.ui.whisper(kbd ? '<kbd>Space</kbd> to rise' : 'Hold wings to rise', 0));
     }
     if (this.phase === 'finale') this.finaleCall();
   }
 
-  private answer(): void {
+  /** The flock replies. `own`: unprompted, quieter, when you've been quiet a while. */
+  private answer(own = false): void {
     const lead = this.leadPos(this.answerPos);
     const p = this.bird.position;
     const cam = this.engine.camera;
-    const id = this.world.land.id;
     const d = Math.hypot(lead.x - p.x, lead.z - p.z);
-    const dir = new THREE.Vector3().subVectors(lead, cam.position);
-    const right = new THREE.Vector3(1, 0, 0).applyQuaternion(cam.quaternion);
-    const pan = dir.clone().normalize().dot(right);
+    const dir = new THREE.Vector3().subVectors(lead, cam.position).normalize();
+    const pan = dir.dot(new THREE.Vector3(1, 0, 0).applyQuaternion(cam.quaternion));
     const size = 0.25 + this.landIdx * 0.13;
-    this.audio.answer(clamp01(1 - d / 3200) * 0.7 + this.landIdx * 0.05, pan * 0.85, Math.min(1, size));
-    // where on screen, or which edge
-    const v = lead.clone();
-    if (id !== 'wintering') v.y = Math.max(v.y, p.y - 200);
-    v.project(cam);
-    let sx = (v.x * 0.5 + 0.5) * window.innerWidth;
-    let sy = (-v.y * 0.5 + 0.5) * window.innerHeight;
-    const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion);
-    if (dir.dot(fwd) < 0 || v.x < -0.94 || v.x > 0.94 || Math.abs(v.y) > 0.94) {
-      sx = pan > 0 ? window.innerWidth - 54 : 54;
-      sy = window.innerHeight * 0.42;
+    this.audio.answer((clamp01(1 - d / 3200) * 0.7 + this.landIdx * 0.05) * (own ? 0.7 : 1), pan * 0.85, Math.min(1, size) * (own ? 0.7 : 1));
+    this.answerAt = this.time;
+    this.answerGain = own ? 0.6 : 1;
+    this.steady = 0;
+    this.ui.beaconPulse();
+    if (!own && this.phase === 'fly') this.hint('answer', 'That light is where they are.', 4600);
+  }
+  private answerAt = -99;
+  private answerGain = 1;
+  /** seconds you've been holding a course for them */
+  private steady = 0;
+  private flockCallT = 34;
+
+  /** The mark stays with the flock for a while, wherever you look. */
+  private drawBeacon(dt: number): void {
+    const HOLD = 17;
+    const age = this.time - this.answerAt;
+    let a = 0;
+    if ((this.phase === 'fly' || this.phase === 'wake') && age < HOLD) a = sm(0, 0.35, age) * (1 - sm(HOLD - 6, HOLD, age)) * this.answerGain;
+    const lead = this.leadPos(this.answerPos);
+    const cam = this.engine.camera;
+    if (a > 0) {
+      // once you're plainly on course it has done its work
+      const f = forwardOf({ yaw: this.bird.yaw, pitch: 0 });
+      const dx = lead.x - this.bird.position.x;
+      const dz = lead.z - this.bird.position.z;
+      const on = (f.x * dx + f.z * dz) / (Math.hypot(dx, dz) || 1) > 0.975;
+      this.steady = on ? this.steady + dt : Math.max(0, this.steady - dt);
+      a *= 1 - 0.75 * sm(4, 9, this.steady);
     }
-    this.ui.answer(sx, sy);
+    this.world.fx.setGlint(lead.x, lead.y, lead.z, a);
+    if (a <= 0) {
+      this.ui.beacon(0, 0, 0, false, 0);
+      return;
+    }
+    const W = window.innerWidth;
+    const H = window.innerHeight;
+    const v = lead.clone().applyMatrix4(cam.matrixWorldInverse);
+    const ty = Math.tan((cam.fov * Math.PI) / 360);
+    const tx = ty * cam.aspect;
+    const behind = v.z > -1;
+    let nx = v.x / (Math.abs(v.z) * tx || 1e-3);
+    let ny = v.y / (Math.abs(v.z) * ty || 1e-3);
+    if (behind) {
+      // straight behind still has to point somewhere
+      nx = (v.x >= 0 ? 1 : -1) * Math.max(1.2, Math.abs(nx));
+      ny = 0;
+    }
+    const mx = 1 - 150 / W;
+    const my = 1 - 190 / H;
+    const edge = behind || Math.abs(nx) > mx || Math.abs(ny) > my;
+    if (edge) {
+      const k = Math.min(mx / Math.max(1e-3, Math.abs(nx)), my / Math.max(1e-3, Math.abs(ny)));
+      nx *= Math.min(1, k);
+      ny *= Math.min(1, k);
+    }
+    this.ui.beacon((nx * 0.5 + 0.5) * W, (-ny * 0.5 + 0.5) * H, a, edge, Math.atan2(-ny * H, nx * W));
   }
 
   private welcome(c: Companion): void {
@@ -819,6 +892,13 @@ export class Game {
       this.hint('edge', 'The wind turns you back toward the road.');
     }
 
+    // they call now and then regardless; you are never far from a direction
+    this.flockCallT -= dt;
+    if (this.flockCallT < 0 && this.time - this.answerAt > 24 && this.progress < 0.95) {
+      this.flockCallT = 36 + Math.random() * 16;
+      this.answer(true);
+    }
+
     this.pickFeathers(dt);
     this.meet();
     this.discover();
@@ -862,31 +942,16 @@ export class Game {
 
   private pickFeathers(dt: number): void {
     const p = this.bird.position;
-    for (const f of this.feathers) {
-      if (f.taken) {
-        if (f.a > 0) f.a = Math.max(0, f.a - dt * 2.5);
-        continue;
-      }
-      const dx = f.x - p.x;
-      const dy = f.y - p.y;
-      const dz = f.z - p.z;
-      const d2 = dx * dx + dy * dy + dz * dz;
-      if (d2 < 900 && d2 > 1) {
-        // they lean toward you a little, on your own wake
-        const k = (dt * 5) / Math.sqrt(d2);
-        f.x -= dx * k * 0.6;
-        f.y -= dy * k * 0.6;
-        f.z -= dz * k * 0.6;
-      }
-      if (d2 < 52) {
-        f.taken = true;
-        this.featherCount++;
-        this.rec.feathers = this.featherCount;
-        this.bird.breath = clamp01(this.bird.breath + config.breathFeather);
-        this.audio.feather(this.motif++);
-        for (let i = 0; i < 9; i++) this.world.fx.spark(f.x, f.y, f.z, (Math.random() - 0.5) * 3 + -dx, (Math.random() - 0.2) * 2, (Math.random() - 0.5) * 3 - dz, 1);
-        this.hint('feather', 'The flock lets feathers fall along the good air.');
-      }
+    const f = forwardOf(this.bird);
+    const got = this.trails?.step(this.bird, this.progress, dt).length ?? 0;
+    for (let k = 0; k < got; k++) {
+      this.featherCount++;
+      this.rec.feathers = this.featherCount;
+      this.bird.breath = clamp01(this.bird.breath + config.breathFeather);
+      this.audio.feather(this.motif++);
+      const v = this.bird.airspeed * 0.7;
+      for (let i = 0; i < 10; i++) this.world.fx.spark(p.x, p.y + 0.3, p.z, f.x * v + (Math.random() - 0.5) * 4, f.y * v + (Math.random() - 0.3) * 2.4, f.z * v + (Math.random() - 0.5) * 4, 1);
+      this.hint('feather', 'The flock lets feathers fall ahead of you. They find you if you pass near.');
     }
   }
 
@@ -1090,6 +1155,7 @@ export class Game {
       seconds: this.rec.seconds,
     };
     if (!this.free && this.landIdx >= this.data.day) this.data.day = Math.min(6, this.landIdx + 1);
+    track('game_milestone', { name: 'roost', value: this.landIdx + 1, land: id, secs: Math.round(this.rec.seconds), feathers: this.rec.feathers });
     save(this.data);
 
     // the company comes down around you
@@ -1131,7 +1197,7 @@ export class Game {
         ['flown', `${(r.distance / 1000).toFixed(1)} km`],
         ['highest', `${Math.round(r.highest)} m`],
         ['longest glide', r.longestGlide > 950 ? `${(r.longestGlide / 1000).toFixed(1)} km` : `${Math.round(r.longestGlide)} m`],
-        ['feathers', `${r.feathers} of ${r.feathersTotal}`],
+        ['feathers', `${r.feathers}`],
       ]);
     });
     this.at(10.6, () => {
@@ -1217,6 +1283,7 @@ export class Game {
     this.at(base + 27, () => this.ui.credit('Aloft', 'for everyone still on the way'));
     this.at(base + 29, () => {
       this.data.arrived = true;
+      track('game_end', { outcome: 'arrived' });
       this.data.day = 6;
       save(this.data);
     });
@@ -1289,7 +1356,7 @@ export class Game {
     // feathers on the air
     let n = 0;
     const P = s.position;
-    for (const f of this.feathers) {
+    for (const f of this.trails?.feathers ?? []) {
       if (f.a <= 0) continue;
       const dx = f.x - P.x;
       const dz = f.z - P.z;
@@ -1327,6 +1394,7 @@ export class Game {
     this.ui.hud(st.hud && this.phase === 'fly' && !this.paused && this.t > 2);
     this.ui.instruments(b.agl, b.airspeed * 3.6, b.breath, b.mode === 'air' ? b.lift : 0);
     this.ui.stick(this.input.pointer.stick, this.phase === 'fly' && this.input.device === 'touch');
+    this.drawBeacon(dt);
     this.sound(dt);
   }
 
@@ -1436,12 +1504,13 @@ export class Game {
       const [dx, dz] = w.land.route.dir(Math.min(0.99, this.leadT + lead / w.land.route.total));
       const yaw = Math.atan2(-dx, -dz);
       const n = 19 + this.landIdx * 4;
+      const lit = 1 - sm(0, 14, this.time - this.answerAt);
       for (let i = 0; i < n; i++) {
         const side = i % 2 ? 1 : -1;
         const k = Math.ceil(i / 2);
         const lat = side * k * 6.4 + Math.sin(T * 0.2 + i) * 1.5;
         const back = k * 7.2 + Math.sin(T * 0.17 + i * 2) * 2;
-        fb.put(L.x - dx * back - dz * lat, L.y + Math.sin(T * 0.4 + i) * 1.6, L.z - dz * back + dx * lat, yaw, 0, T * 5.4 + i * 0.9, 1.0, 0.55 + 0.45 * Math.sin(T * 0.5 + i * 0.6));
+        fb.put(L.x - dx * back - dz * lat, L.y + Math.sin(T * 0.4 + i) * 1.6, L.z - dz * back + dx * lat, yaw, 0, T * 5.4 + i * 0.9, 1.25 + 0.6 * lit, 0.55 + 0.45 * Math.sin(T * 0.5 + i * 0.6));
       }
     }
     // the first morning: they go over, and on

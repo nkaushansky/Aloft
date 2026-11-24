@@ -22,7 +22,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #0b0d14; col
 #ui > * { position: absolute; }
 .on { opacity: 1 !important; }
 
-#ui.paneled .title, #ui.paneled .place, #ui.paneled .whisper, #ui.paneled .verse, #ui.paneled .card, #ui.paneled .log, #ui.paneled .touch, #ui.paneled .tp { opacity: 0 !important; pointer-events: none !important; }
+#ui.paneled .title, #ui.paneled .place, #ui.paneled .whisper, #ui.paneled .verse, #ui.paneled .card, #ui.paneled .log, #ui.paneled .touch, #ui.paneled .tp, #ui.paneled .beacon { opacity: 0 !important; pointer-events: none !important; }
 #ui.paneled .tb { pointer-events: none; }
 
 /* loading */
@@ -72,13 +72,19 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #0b0d14; col
 .hud .quill { stroke: rgba(253, 246, 234, 0.65); stroke-width: 1; fill: none; }
 .hud .ray { fill: var(--ember); opacity: 0; }
 
-/* the flock's answer */
-.mark-a { left: 0; top: 0; width: 0; height: 0; opacity: 0; }
-.mark-a::before, .mark-a::after { content: ''; position: absolute; left: -34px; top: -34px; width: 68px; height: 68px; border-radius: 50%; border: 1px solid rgba(255, 226, 190, 0.85); transform: scale(0.1); opacity: 0; }
-.mark-a.go { opacity: 1; }
-.mark-a.go::before { animation: ping 2.6s ease-out 1; }
-.mark-a.go::after { animation: ping 2.6s ease-out 0.5s 1; }
-@keyframes ping { 0% { transform: scale(0.08); opacity: 0.95; } 100% { transform: scale(1.25); opacity: 0; } }
+/* the flock's answer: rings where the voice came from, then a small light that stays a while */
+.beacon { left: 0; top: 0; width: 0; height: 0; opacity: 0; will-change: transform, opacity; filter: drop-shadow(0 0 3px rgba(24, 20, 38, 0.6)) drop-shadow(0 0 14px rgba(24, 20, 38, 0.35)); }
+.beacon i { position: absolute; border-radius: 50%; }
+.beacon .ring { left: -84px; top: -84px; width: 168px; height: 168px; border: 2.5px solid #fff1d8; box-shadow: 0 0 26px rgba(255, 206, 148, 0.65), inset 0 0 22px rgba(255, 206, 148, 0.4); transform: scale(0.06); opacity: 0; }
+.beacon .core { left: -7px; top: -7px; width: 14px; height: 14px; background: #fff6e4; box-shadow: 0 0 18px 5px rgba(255, 210, 150, 0.85); }
+.beacon .halo { left: -24px; top: -24px; width: 48px; height: 48px; border: 1.5px solid rgba(255, 241, 216, 0.75); animation: breathe 3.4s ease-in-out infinite; }
+.beacon svg { position: absolute; left: -30px; top: -30px; width: 60px; height: 60px; opacity: 0; transition: opacity 0.5s ease; overflow: visible; }
+.beacon.edge svg { opacity: 1; }
+.beacon.go .ring { animation: ping 3s cubic-bezier(0.15, 0.6, 0.3, 1) 1; }
+.beacon.go .r2 { animation-delay: 0.55s; }
+.beacon.go .r3 { animation-delay: 1.1s; }
+@keyframes ping { 0% { transform: scale(0.05); opacity: 1; } 70% { opacity: 0.5; } 100% { transform: scale(1.1); opacity: 0; } }
+@keyframes breathe { 0%, 100% { transform: scale(0.86); opacity: 0.55; } 50% { transform: scale(1.1); opacity: 0.95; } }
 
 /* touch */
 .touch { right: calc(18px + var(--sr)); bottom: calc(22px + var(--sb)); display: none; gap: 14px; flex-direction: column; align-items: flex-end; }

@@ -32,13 +32,23 @@ code { font:14px ui-monospace,Menlo,monospace; background:#efe6d5; padding:1px 5
 
 <h1>Aloft</h1>
 <p class="lede">You are a young crane. The flock left while you were sleeping. It is a long way south, and you are one day behind.</p>
-<p class="meta">Living design doc · v1.0 · Nov 24 2026 · supersedes v0.10 (kept in <code>docs/archive/</code>) · updated in place when decisions land</p>
+<p class="meta">Living design doc · v1.1 · Nov 24 2026 · supersedes v0.10 (kept in <code>docs/archive/</code>) · updated in place when decisions land</p>
 
 <div class="sky"></div>
 <p>The color script, start to finish. Position in it follows distance flown, not a clock.</p>
 
+<h2>Playtest log</h2>
+<h3>Nov 23–24 2026, Nate, first run (lands I to III)</h3>
+<ul>
+<li>"Beautiful… visually gorgeous." Thermal towers made sense, weren't too far apart, easily findable. <b>Thermal placement and helices: leave alone.</b></li>
+<li><b>Hard to see where to follow.</b> The answer used to be two thin 68 px rings for 2.6 seconds. Now it's three bold rings, then a small steady light that stays with the flock for 17 seconds wherever you look, an arrow when it's off screen, and a glint on the air where they actually are. It steps back once you've held course. The flock also calls unprompted every 40 seconds or so, quieter.</li>
+<li><b>Feathers hard to get.</b> They were fixed in space and you had to pass within 7 m at 75 km/h. Now most are shed <em>for you</em>: a line falls ahead along the track you're already flying and bends home to the road; a spiral opens in front of you, turning your way, once you lean into a thermal. They keep to your height and drift into your wake from about 20 m. An autopilot that ignores feathers used to catch none or one per land; it now catches 49 to 69 (<code>npm run test:feathers</code>).</li>
+<li>Found on the way: in Wintering the call answered from your own position. It now answers from the water ahead.</li>
+</ul>
+
 <h2>What the first version was</h2>
 <p>The July prototype asked one question at a time and answered four of them: gliding feels good, finding lift is satisfying, the air can be read without a HUD, and a bird with soft music has <em>something</em>. The heart of it was right and is untouched here: <b>height and speed are the same thing in two forms, and only the world can give you more.</b> The flight constants you tuned are the same numbers.</p>
+<p>(There was also a second version between that one and this: <em>The Crossing</em>, a July 26 reimagining about sublime, physically honest air and one day to cross a continent. It was live on the arcade until Nov 24; its source is on <code>claude/aloft-creative-reimagining-djejgr</code>. This retelling was written from the July 9 prototype and went back to calm on its own, not as a reply to it.)</p>
 <p>The honest verdict at gate 3 was "heart-adjacent", and the note from the last playtests was "kind of empty". I think both had one cause. It was a sandbox with a wonderful verb and no reason to use it: nowhere you needed to be, no one who'd notice, and a look that showed you the air without making you want to be in it. Adding biomes and journals to that would have decorated the emptiness. So instead of continuing phase 4, this is a retelling.</p>
 
 <h2>The retelling</h2>
@@ -65,7 +75,7 @@ code { font:14px ui-monospace,Menlo,monospace; background:#efe6d5; padding:1px 5
 <h3>Company</h3>
 <p>Other stragglers wait in thermals and beside landmarks: two each in the first three lands, one each in the next two. They join for the rest of the journey, fly ahead of you in a wide open V (you're the youngest, so you fly at the back), save you a little drag, and each adds a voice to the music.</p>
 <h3>Feathers</h3>
-<p>The flock sheds feathers along good lines: spirals up thermals, skims over water, under the Nine Arches. They're the lesson and the line at once. Each plays the next note of the home motif, so flying a line well plays its melody.</p>
+<p>The flock sheds feathers along good air, mostly for you: a line ahead that bends toward the road, a spiral in the thermal you've leaned into. A few wait low over water and by the named places for whoever goes looking. Each plays the next note of the home motif, so following them plays its melody. They're counted, never totalled: there's no score to fall short of.</p>
 <h3>Rest</h3>
 <p>Touch down anywhere, including shallow water, and the bird stands. Breath comes back. Space runs, leaps and flies. Deep water can't be stood in, so it lifts you off its back. Steep ground turns you along itself. There is no crash, reset or respawn in the game.</p>
 <h3>Drift (Q)</h3>
@@ -124,7 +134,9 @@ code { font:14px ui-monospace,Menlo,monospace; background:#efe6d5; padding:1px 5
 <li>Companions lead and you fly at the back, rather than you at the point.</li>
 <li>Auto-landing inside 300 m of the roost.</li>
 <li>Eight companions at most. They can't be lost.</li>
-<li>No map, compass or objective marker: the call is the only wayfinding.</li>
+<li>No map or compass. The call, the flock's own calls, and the feather lines are the wayfinding.</li>
+<li>Feathers show a count, not a fraction.</li>
+<li>Arcade card is marked work in progress, and not flagged mobile until it's been flown on a phone.</li>
 <li>Units are metres and km/h, as before.</li>
 <li>The Bell That Waits sits inside the cloud deck; you find it by feel.</li>
 </ul>
@@ -140,10 +152,14 @@ code { font:14px ui-monospace,Menlo,monospace; background:#efe6d5; padding:1px 5
 <li>No downloaded assets: all geometry, textures and sound are generated. The whole game is one ~1 MB file.</li>
 </ul>
 
+<h2>Staging and publishing</h2>
+<p><b>nk00.com/arcade/aloft is the staging area</b> (decided Nov 24). <code>npm run build:arcade</code> makes the folder, hub card included; the deploy archives what it replaces. <code>?day=4</code> opens the road that far, for picking up a run on a new machine.</p>
+<p>When it's ready to publish for real: a trailer (1280×720, 15 to 30 s, with sound), a muted hover loop, four or five captioned screenshots, a cover page, and the arcade card moved from work in progress to playable. Not before.</p>
+
 <h2>What I'd look at next</h2>
 <ol>
-<li><b>Play it on real GPUs.</b> It was built and checked on a software renderer, so the pictures are verified and the frame rate is not.</li>
-<li><b>Flight pacing by hand.</b> The autopilot finishes every land; a person should confirm the first thermal is found without frustration.</li>
+<li><b>Lands IV to VI by hand.</b> Nobody has flown the Red Rooms, the crossing or the ending yet.</li>
+<li><b>Sound by ear</b>, and frame rate on more than one machine. Phones and Safari are untried.</li>
 <li>A Jess pass on palettes, if she'd enjoy it. Everything is hex values in <code>days.ts</code>.</li>
 <li>Parked: choosing your bird, real-elevation lands, a second journey north in spring.</li>
 </ol>

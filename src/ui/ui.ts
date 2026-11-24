@@ -81,7 +81,7 @@ export class Ui {
     this.spd = this.hudEl.querySelector('.r span')!;
     this.clip = this.hudEl.querySelector('#fc rect') as SVGRectElement;
     this.rays = Array.from(this.hudEl.querySelectorAll('.ray')) as unknown as SVGElement[];
-    this.markEl = el('div', 'mark-a');
+    this.markEl = el('div', 'beacon', `<i class="ring r1"></i><i class="ring r2"></i><i class="ring r3"></i><i class="halo"></i><i class="core"></i><svg viewBox="-30 -30 60 60" aria-hidden="true"><path d="M17 -11 L29 0 L17 11" fill="none" stroke="#fff1d8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`);
     this.panelEl = el('div', 'panel');
     this.logEl = el('div', 'log');
     this.photoEl = el('div', 'photo');
@@ -128,6 +128,12 @@ export class Ui {
     this.loadEl.classList.add('gone');
   }
 
+  /** nothing on a closed screen keeps the keyboard: Space belongs to the wings */
+  private letGo(): void {
+    (document.activeElement as HTMLElement | null)?.blur?.();
+    this.panelEl.innerHTML = '';
+  }
+
   // --- title ----------------------------------------------------------------
   showTitle(sub: string, items: MenuItem[]): void {
     this.titleEl.querySelector('.sub')!.textContent = sub;
@@ -139,6 +145,7 @@ export class Ui {
     this.titleEl.classList.remove('on');
     this.titleEl.style.pointerEvents = 'none';
     this.items = [];
+    (document.activeElement as HTMLElement | null)?.blur?.();
     (this.titleEl.querySelector('.menu') as HTMLElement).innerHTML = '';
   }
 
@@ -270,13 +277,25 @@ export class Ui {
     }
   }
 
-  /** ring the place on screen (or at its edge) the answer came from */
-  answer(x: number, y: number): void {
-    const m = this.markEl;
-    m.style.transform = `translate(${x}px,${y}px)`;
-    m.classList.remove('go');
-    void m.offsetWidth;
-    m.classList.add('go');
+  /** ring out from the mark */
+  beaconPulse(): void {
+    this.markEl.classList.remove('go');
+    void this.markEl.offsetWidth;
+    this.markEl.classList.add('go');
+  }
+  private beaconOn = false;
+  /** keep the mark where the voice is; at an edge it points the way */
+  beacon(x: number, y: number, alpha: number, edge: boolean, angle: number): void {
+    if (alpha <= 0.004) {
+      if (this.beaconOn) this.markEl.style.opacity = '0';
+      this.beaconOn = false;
+      return;
+    }
+    this.beaconOn = true;
+    this.markEl.style.opacity = alpha.toFixed(3);
+    this.markEl.style.transform = `translate(${x.toFixed(1)}px,${y.toFixed(1)}px)`;
+    this.markEl.classList.toggle('edge', edge);
+    if (edge) (this.markEl.lastElementChild as unknown as HTMLElement).style.transform = `rotate(${angle.toFixed(3)}rad)`;
   }
 
   // --- panels --------------------------------------------------------------------
@@ -285,6 +304,7 @@ export class Ui {
     this.root.classList.remove('paneled');
     this.panelOpen = false;
     this.items = [];
+    this.letGo();
   }
 
   private openPanel(): HTMLElement {
@@ -399,7 +419,7 @@ export class Ui {
       if (!open) b.disabled = true;
       const found = d.landmarks.filter((l) => l.startsWith(id + ':')).map((l) => l.split(':')[1]);
       b.innerHTML = `<div class="num">${mv.numeral}</div><div class="name">${open ? mv.title : '—'}</div><div class="meta">${
-        rec ? `${(rec.distance / 1000).toFixed(1)} km · highest ${Math.round(rec.highest)} m · ${rec.feathers} of ${rec.feathersTotal} feathers` : open ? 'Not yet flown' : ''
+        rec ? `${(rec.distance / 1000).toFixed(1)} km · highest ${Math.round(rec.highest)} m · ${rec.feathers} feathers` : open ? 'Not yet flown' : ''
       }${found.length ? `<br>${found.length} place${found.length > 1 ? 's' : ''} known` : ''}</div>`;
       b.addEventListener('click', () => {
         this.onUi('select');

@@ -95,11 +95,11 @@ vec3 aurora(vec3 d){
     float t = float(i) + j;
     float hgt = 0.75 + t * 0.035 + t * t * 0.0012;
     vec2 p = d.xz * (hgt / (d.y + 0.22));
-    vec2 w = vec2(nz(p * 0.11 + uTime * 0.0035).r, nz(p * 0.11 + 0.5 - uTime * 0.003).r) - 0.5;
+    vec2 w = vec2(nz0(p * 0.11 + uTime * 0.0035).r, nz0(p * 0.11 + 0.5 - uTime * 0.003).r) - 0.5;
     p += w * 2.3;
-    float r = nz(vec2(p.x * 0.045, p.y * 0.17) + vec2(0.0, uTime * 0.002)).r;
+    float r = nz0(vec2(p.x * 0.045, p.y * 0.17) + vec2(0.0, uTime * 0.002)).r;
     float ribbon = 1.0 - smoothstep(0.0, 0.055, abs(r - 0.5));
-    float rays = 0.55 + 0.45 * nz(vec2(p.x * 0.9 + uTime * 0.01, p.y * 0.22)).r * 1.6;
+    float rays = 0.55 + 0.45 * nz0(vec2(p.x * 0.9 + uTime * 0.01, p.y * 0.22)).r * 1.6;
     float f = exp(-t * 0.12);
     vec3 col = mix(vec3(0.12, 1.0, 0.55), vec3(0.55, 0.25, 0.95), smoothstep(2.0, 17.0, t));
     acc += col * ribbon * rays * f;
@@ -152,7 +152,7 @@ vec3 fullSky(vec3 d){
   // sun disc
   float mu = dot(d, uSunDir);
   float disc = smoothstep(0.99990, 0.99996, mu);
-  c += uSunCol * disc * 26.0 * uHalo.w * (1.0 - ci.a * 0.6) * smoothstep(-0.03, 0.0, uSunDir.y + 0.02);
+  c += mix(uSunCol, uSunCol * vec3(1.0, 0.8, 0.6), smoothstep(0.2, 0.0, uSunDir.y)) * disc * 5.0 * uHalo.w * (1.0 - ci.a * 0.6) * smoothstep(-0.03, 0.0, uSunDir.y + 0.02);
   return c;
 }
 
@@ -170,6 +170,15 @@ void main(){
     c = texture(tColor, vUv).rgb;
     c = applyAir(c, wp);
     dist = length(wp - uCamPos);
+  }
+  if (uRainbow > 0.001){
+    float ang = degrees(acos(clamp(dot(d, -uSunDir), -1.0, 1.0)));
+    float t1 = (ang - 40.4) / 2.2, t2 = (54.0 - ang) / 3.4;
+    vec3 b1 = clamp(vec3(1.0 - abs(t1 - 0.86) * 2.6, 1.0 - abs(t1 - 0.52) * 2.6, 1.0 - abs(t1 - 0.16) * 2.6), 0.0, 1.0);
+    vec3 b2 = clamp(vec3(1.0 - abs(t2 - 0.86) * 2.6, 1.0 - abs(t2 - 0.52) * 2.6, 1.0 - abs(t2 - 0.16) * 2.6), 0.0, 1.0);
+    float fade = smoothstep(300.0, 1800.0, dist) * smoothstep(-0.06, 0.05, d.y) * (0.45 + 0.55 * smoothstep(0.5, 0.05, d.y));
+    c += (b1 * 0.2 + b2 * 0.05) * uRainbow * fade * (0.35 + lum(uKeyCol) * 0.6);
+    c *= 1.0 + 0.10 * uRainbow * fade * smoothstep(41.0, 30.0, ang);   // the bright inside of the bow
   }
   if (uCloudsOn > 0.5){
     // depth-aware upsample of the cloud buffer
@@ -287,10 +296,10 @@ vec3 kuwahara(vec2 uv){
   for (int j = 0; j <= 2; j++) for (int i = 0; i <= 2; i++){
     vec2 q = vec2(float(i), float(j)) * uTexel * 1.1;
     vec3 c;
-    c = min(texture(tColor, uv + vec2(-q.x, -q.y)).rgb, vec3(8.0)); m[0] += c; s[0] += c * c;
-    c = min(texture(tColor, uv + vec2( q.x, -q.y)).rgb, vec3(8.0)); m[1] += c; s[1] += c * c;
-    c = min(texture(tColor, uv + vec2( q.x,  q.y)).rgb, vec3(8.0)); m[2] += c; s[2] += c * c;
-    c = min(texture(tColor, uv + vec2(-q.x,  q.y)).rgb, vec3(8.0)); m[3] += c; s[3] += c * c;
+    c = min(textureLod(tColor, uv + vec2(-q.x, -q.y), 0.0).rgb, vec3(8.0)); m[0] += c; s[0] += c * c;
+    c = min(textureLod(tColor, uv + vec2( q.x, -q.y), 0.0).rgb, vec3(8.0)); m[1] += c; s[1] += c * c;
+    c = min(textureLod(tColor, uv + vec2( q.x,  q.y), 0.0).rgb, vec3(8.0)); m[2] += c; s[2] += c * c;
+    c = min(textureLod(tColor, uv + vec2(-q.x,  q.y), 0.0).rgb, vec3(8.0)); m[3] += c; s[3] += c * c;
   }
   vec3 acc = vec3(0.0); float w = 0.0;
   for (int k = 0; k < 4; k++){

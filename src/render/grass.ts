@@ -43,7 +43,7 @@ export class Grass {
 
   private build(): void {
     if (this.amount <= 0) return;
-    const mk = (n: number, kind: number, blades: number) => {
+    const mk = (n: number, kind: number, blades: number, rScale = 1) => {
       // a tuft: several blades fanned from one root
       const pos: number[] = [];
       const idx: number[] = [];
@@ -73,14 +73,16 @@ export class Grass {
       g.instanceCount = n * n;
       const m = new THREE.Mesh(
         g,
-        worldMaterial(VERT, FRAG, { ...this.u, uN: { value: n }, uKind: { value: kind }, uBlades: { value: blades } }, { side: THREE.DoubleSide }),
+        worldMaterial(VERT, FRAG, { ...this.u, uN: { value: n }, uKind: { value: kind }, uBlades: { value: blades }, uRS: { value: rScale } }, { side: THREE.DoubleSide }),
       );
       m.frustumCulled = false;
+      m.userData.near = rScale < 1;
       this.group.add(m);
       this.meshes.push(m);
     };
     const k = Math.sqrt(this.amount);
     mk(Math.round(230 * k), 0, 6);
+    mk(Math.round(158 * k), 0, 5, 0.3); // a dense inner ring for standing in
     mk(Math.round(96 * k), 1, 5); // reeds
     mk(Math.round(84 * k), 2, 3); // flowers
   }
@@ -97,7 +99,7 @@ export class Grass {
 
   update(agl: number): void {
     const on = agl < 130;
-    for (const m of this.meshes) m.visible = on;
+    for (const m of this.meshes) m.visible = on && (!m.userData.near || agl < 26);
     this.u.uR.value = this.radius;
   }
 }
@@ -105,7 +107,7 @@ export class Grass {
 const VERT = /* glsl */ `
 ${FULL}
 in vec2 iC;
-uniform float uN, uKind, uBlades, uR, gTall, gLand;
+uniform float uN, uKind, uBlades, uR, uRS, gTall, gLand;
 uniform vec3 sGrassA, sGrassB, sDry;
 uniform vec3 gA, gB, gTip, gF0, gF1;
 out vec3 vC;
@@ -113,15 +115,16 @@ out vec3 vW;
 out vec3 vN;
 out float vT;
 void main(){
-  float cell = 2.0 * uR / uN;
+  float R = uR * uRS;
+  float cell = 2.0 * R / uN;
   vec2 cc = floor(uCamPos.xz / cell);
   vec2 id = mod(iC - cc, uN);         // wrap so each tuft keeps its place in the world
   vec2 gid = cc + id - floor(uN * 0.5);
-  vec2 rnd = hash22(gid + uKind * 37.0);
+  vec2 rnd = hash22(gid + uKind * 37.0 + uRS * 91.0);
   vec2 rnd2 = hash22(gid * 1.7 + 11.0 + uKind * 5.0);
   vec2 xz = (gid + 0.5 + (rnd - 0.5) * 0.95) * cell;
   float dxz = length(xz - uCamPos.xz);
-  float fade = 1.0 - smoothstep(uR * 0.62, uR * 0.98, dxz);
+  float fade = 1.0 - smoothstep(R * 0.55, R * 0.98, dxz);
   vec2 muv = xz / (2.0 * uWorld.x) + 0.5;
   float y = terrainH(xz);
   vec4 mk = textureLod(uMaskTex, muv, 0.0);
@@ -171,7 +174,7 @@ void main(){
   p.y += h * t * (1.0 - 0.22 * dot(bend, bend) * t);
   p.xz += bend * h * t * t;
   // width holds up at distance so fields don't go bald
-  float w = (0.0075 + 0.0008 * dxz) * (uKind < 0.5 ? 1.0 : uKind < 1.5 ? 1.0 : 1.0) * smoothstep(0.0, 0.02, h) * (0.7 + 0.6 * rnd2.y);
+  float w = (0.0046 + 0.0009 * dxz) * (uKind < 0.5 ? 1.0 : uKind < 1.5 ? 1.0 : 1.0) * smoothstep(0.0, 0.02, h) * (0.7 + 0.6 * rnd2.y);
   // anything brushing the lens gets out of the way
   h *= smoothstep(0.9, 2.6, length(vec3(xz.x, y + 0.6, xz.y) - uCamPos));
   vec3 toCam = normalize(uCamPos - p);
@@ -182,7 +185,8 @@ void main(){
     col = mix(gA, gB, sat(m2 * 1.5 - 0.25 + (rnd2.y - 0.5) * 0.5));
     col = mix(col, sDry, sat((m1 - 0.42) * 1.5) * 0.5);
     if (uKind > 0.5) col = mix(col, gTip * 0.8, 0.35 + 0.3 * rnd.x);
-    col = mix(col * 0.48, mix(col, gTip, 0.55 + 0.3 * g), t * t * 0.9 + 0.1 * t);
+    vec3 soil = mix(sDry, mix(sGrassA, sGrassB, 0.5), mk.g) * 0.72;
+    col = mix(soil, mix(col, gTip, 0.5 + 0.3 * g), smoothstep(0.0, 0.9, t));
   } else {
     vec3 stem = gA * 0.8;
     vec3 fcol = rnd2.y > 0.45 ? gF0 : gF1;
@@ -210,7 +214,7 @@ void main(){
   vec3 V = normalize(uCamPos - vW);
   vec3 N = normalize(vN);
   float sh = keyShadow(vW, 0.0016) * birdShadow(vW);
-  float ao = mix(0.5, 1.0, vT);
+  float ao = mix(0.72, 1.0, vT);
   float nl = sat((dot(N, uKeyDir) + 0.35) / 1.35);
   vec3 c = vC * (uKeyCol * nl * sh * ao + ambient(N, ao));
   float back = pow(sat(dot(-V, uKeyDir)), 3.0);

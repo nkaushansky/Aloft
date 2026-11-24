@@ -1,72 +1,50 @@
 # Aloft
 
-A serene, low-poly browser gliding game about reading the air and staying up.
-The tone for everything: **calm, gentle, zen** (see `CLAUDE.md`).
+You are a young crane. The flock left while you were sleeping.
+It is a long way south, and you are one day behind.
 
-Phases 0–3 passed (*gliding feels good · lift is satisfying · the air is
-legible · face and voice landed*). This repo is currently **Phase 4**,
-which answers exactly one question:
-
-> **Can you name a place you love?**
-
-You fly a low-poly soaring bird over seeded procedural country — lakes
-with wind-ripples, forests whose trees lean downwind, sun-baked dry land
-where the thermals are born (marked by dust and circling birds), ridge
-lift on every windward slope, a cairn on the summit, a dawn-to-dusk day
-cycle, and meditative generative chimes that quicken gently with speed.
-A seed *is* a map: the "newWorld" button deals a fresh countryside, and
-keeping a seed means you can always fly back. The flight model is one
-idea: **total energy = altitude + airspeed**, bleeding to drag — and
-lift, found in the world, is the only way to top the tank back up.
+A quiet flight in six movements, in the browser. No fail state, no clock:
+the day moves when you do.
 
 - Design doc: [`docs/design-doc.html`](docs/design-doc.html) (living document)
-- Phase 0 brief: [`docs/phase0-kickoff.md`](docs/phase0-kickoff.md)
+- The tone for everything: **calm, gentle, zen** (see `CLAUDE.md`)
 
 ## Run it
 
 ```sh
 npm install
-npm run dev     # Vite dev server
-npm run build   # typecheck + production build
+npm run dev            # Vite dev server
+npm run build          # typecheck + static site in dist/ (relative paths, host anywhere)
+npm run build:single   # the whole game as one HTML file in dist-single/
+npm run test:sim       # flight model checks
+npm run test:journey   # flies all six lands headlessly
 ```
 
 ## Controls
 
-| Key | Action |
-| --- | --- |
-| `W` / `↑` | pitch down (dive — gain speed) |
-| `S` / `↓` | pitch up (climb — spend speed) |
-| `A` / `←`, `D` / `→` | roll / banked turn |
-| `R` | reset to launch |
-| `M` | mute / unmute the ambient bed |
-| `H` | toggle the debug/tuning readout (flight instruments are always on) |
+| | Keyboard | Touch | Gamepad |
+| --- | --- | --- | --- |
+| Lean, dive, climb | `WASD` / arrows | drag anywhere | left stick |
+| Beat wings (costs breath) | hold `Space` | hold *wings* | `A` / right trigger |
+| Call | `E` | *call* | `X` / `Y` |
+| Look around | right-drag, `IJKL` | | right stick |
+| Drift (the bird flies itself) | `Q` | pause menu | right stick click |
+| Postcard | `P` | pause menu | Select |
+| Rest (pause) | `Esc` | top left | Start |
 
-**On touch devices:** touch anywhere and drag — your touch point becomes a
-floating stick (drag up = nose down). Round buttons replace `R` and `M`.
+`M` mutes, `H` hides the instruments. Mouse: drag to fly, same as touch.
 
-Every feel constant is a live slider in the lil-gui panel (top right).
-The canonical values live in [`src/sim/config.ts`](src/sim/config.ts) —
-when a tuned value feels right in the panel, write it back there.
-
-## Architecture
-
-The simulation is completely separate from rendering — `src/sim/` never
-imports Three.js, so the flight feel is testable and renderers/terrain
-sources are swappable.
+## Layout
 
 ```
 src/
-  sim/        pure logic — config (all feel constants), state, flight model,
-              seeded noise, TerrainProvider (Flat, Hill, Procedural) and
-              LiftProvider (ThermalField, RidgeLift, CompositeLift)
-  render/     Three.js scene (vertex-colored terrain, the player bird, dust,
-              tell-birds, wind streaks, day cycle) + chase cam
-  audio/      ambient bed (wind follows airspeed) — routed for adaptive later
-  input/      keyboard -> normalized { pitch, roll } (input-agnostic sim)
-  ui/         flight instruments + stick guide + hidden debug readout
-  main.ts     fixed-timestep (60Hz) loop with render interpolation
+  sim/      pure flight: config (feel), state, model, air, flock, autopilot
+  world/    land recipes, erosion, baking (worker-safe, seeded)
+  game/     the six movements, game flow, save
+  render/   HDR pipeline: terrain, sky, clouds, water, forests, crane, fx
+  audio/    generative score, crane voices, ambience
+  input/    keyboard, pointer/touch, gamepad
+  ui/       words and the few instruments
 ```
 
-Still out of scope, on purpose: goals/collectibles, the boost meter,
-flocks, landing & perches, persistence, touch/gamepad (all slotted in the
-design doc's phases and parking lot).
+Everything is generated at runtime: no models, textures or audio files.

@@ -100,7 +100,7 @@ float dens(vec3 p, bool cheap, out float hf){
   float b = uCloud.x, t = uCloud.y;
   hf = (p.y - b) / (t - b);
   if (hf <= 0.0 || hf >= 1.0) return 0.0;
-  vec4 w = texture(uWeather, (p.xz + uCloudOff) / (2.0 * uWeatherHalf) + 0.5);
+  vec4 w = textureLod(uWeather, (p.xz + uCloudOff) / (2.0 * uWeatherHalf) + 0.5, 0.0);
   float cov = w.r;
   if (cov < 0.02) return 0.0;
   float tall = max(w.g, 0.06);
@@ -110,14 +110,14 @@ float dens(vec3 p, bool cheap, out float hf){
   if (uSea > 0.5) prof = smoothstep(0.0, 0.2, hh) * (1.0 - smoothstep(0.35, 1.0, hh));
   else prof = smoothstep(0.0, 0.11, hh) * (1.0 - smoothstep(0.35, 1.0, hh));
   vec3 q = p + vec3(uWind.x, -1.2, uWind.y) * uTime * 0.6;
-  vec4 n = texture(uVol, q * uVolScale);
+  vec4 n = textureLod(uVol, q * uVolScale, 0.0);
   float wf = n.g * 0.6 + n.b * 0.27 + n.a * 0.13;
   float bs = mix(n.r, 1.0, w.b * 0.85);
   float th = uSea > 0.5 ? 1.0 - cov : mix(0.96, 0.30, cov);
   float d = remap(bs * mix(1.0, prof, 0.85), th, 1.0, 0.0, 1.0) * smoothstep(0.0, 0.12, prof);
   if (d <= 0.0) return 0.0;
   if (!cheap){
-    vec4 e = texture(uVol, q * uVolScale * 4.7 + vec3(0.0, uTime * 0.0012, 0.0));
+    vec4 e = textureLod(uVol, q * uVolScale * 4.7 + vec3(0.0, uTime * 0.0012, 0.0), 0.0);
     float ef = e.g * 0.55 + e.b * 0.3 + e.a * 0.15;
     float er = mix(1.0 - ef, ef, sat(hh * 3.0));
     d = remap(d, er * uErode * (1.0 - w.b), 1.0, 0.0, 1.0);
@@ -146,7 +146,7 @@ float lightOD(vec3 p){
 void main(){
   vec3 ray = viewRay(vUv);
   vec3 d = normalize(ray);
-  float z = texture(tDepth, vUv).r;
+  float z = textureLod(tDepth, vUv, 0.0).r;
   float lz = linZ(z);
   // the bird and whatever is at arm's length never punch holes in the weather
   if (z < 0.9999999 && lz < 28.0){
@@ -155,7 +155,7 @@ void main(){
     for (int k = 0; k < 10; k++){
       float a = float(k) * 2.4 + 0.6;
       float r = 9.0 + float(k) * 6.5;
-      float z2 = texture(tDepth, vUv + vec2(cos(a), sin(a)) * r * px).r;
+      float z2 = textureLod(tDepth, vUv + vec2(cos(a), sin(a)) * r * px, 0.0).r;
       float l2 = linZ(z2);
       if (z2 >= 0.9999999 || l2 > 28.0){ z = z2; lz = l2; break; }
     }
@@ -245,9 +245,9 @@ void main(){
       vec3 p = uCamPos + d * s;
       float dn = 0.0;
       if (uMist.x > 1e-6){
-        float top = uMist.y * (0.55 + 0.9 * nz(p.xz / 2300.0 + uTime * 0.0006).r);
+        float top = uMist.y * (0.55 + 0.9 * nz0(p.xz / 2300.0 + uTime * 0.0006).r);
         float prof = smoothstep(top, top * 0.1, p.y);
-        float wisp = nz((p.xz - uWind * uTime * 0.35) / 610.0).r * 0.65 + nz((p.xz + p.y * 3.0) / 170.0 + uTime * 0.003).r * 0.35;
+        float wisp = nz0((p.xz - uWind * uTime * 0.35) / 610.0).r * 0.65 + nz0((p.xz + p.y * 3.0) / 170.0 + uTime * 0.003).r * 0.35;
         dn += uMist.x * prof * smoothstep(0.28, 0.66, wisp) * 1.7;
       }
       float rn = 0.0;
@@ -255,7 +255,7 @@ void main(){
         vec2 q = p.xz - uRain.xy - uWind * (uCloud.x - p.y) * 0.02;
         float r = length(q) / uRain.z;
         float a = atan(q.y, q.x);
-        float st = nz(vec2(a * 1.9 + r * 0.35, p.y / 2600.0 + uTime * 0.012)).r * 0.6 + nz(vec2(a * 7.0 - r, p.y / 900.0 + uTime * 0.03)).r * 0.4;
+        float st = nz0(vec2(a * 1.9 + r * 0.35, p.y / 2600.0 + uTime * 0.012)).r * 0.6 + nz0(vec2(a * 7.0 - r, p.y / 900.0 + uTime * 0.03)).r * 0.4;
         rn = uRain.w * smoothstep(1.0, 0.62, r + (st - 0.5) * 0.5) * smoothstep(uCloud.x + 250.0, uCloud.x - 60.0, p.y) * 0.0017 * (0.4 + st);
       }
       float tot = dn + rn;
@@ -298,11 +298,11 @@ void main(){
   vec4 mn = cur, mx = cur, av = cur;
   for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++){
     if (i == 0 && j == 0) continue;
-    vec4 s = texture(tCur, vUv + vec2(float(i), float(j)) * uTexel);
+    vec4 s = textureLod(tCur, vUv + vec2(float(i), float(j)) * uTexel, 0.0);
     mn = min(mn, s); mx = max(mx, s); av += s;
   }
   av /= 9.0;
-  vec4 hist = texture(tHist, puv);
+  vec4 hist = textureLod(tHist, puv, 0.0);
   vec4 pad = (mx - mn) * 0.12 + 0.003;
   hist = clamp(hist, mn - pad, mx + pad);
   float k = 0.09;

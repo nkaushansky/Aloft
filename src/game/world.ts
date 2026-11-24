@@ -67,7 +67,7 @@ export class World {
     }
     this.farBirds = new FarBirds(220);
     e.opaque.add(this.farBirds.mesh);
-    this.multitude = new Multitude(q.name === 'low' ? 900 : q.name === 'medium' ? 1800 : 3200);
+    this.multitude = new Multitude(q.name === 'low' ? 1400 : q.name === 'medium' ? 3000 : 5200);
     e.opaque.add(this.multitude.mesh);
     this.water = new Water(e.V);
     e.water.add(this.water.mesh);

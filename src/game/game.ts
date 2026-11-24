@@ -171,7 +171,8 @@ export class Game {
     if (q !== 'auto') return QUALITY[q];
     const coarse = window.matchMedia('(pointer: coarse)').matches;
     const cores = navigator.hardwareConcurrency || 4;
-    if (coarse) return cores >= 6 ? QUALITY.medium : QUALITY.low;
+    const ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (coarse) return ios || cores >= 6 ? QUALITY.medium : QUALITY.low;
     return cores >= 8 ? QUALITY.high : QUALITY.medium;
   }
 
@@ -318,7 +319,9 @@ export class Game {
     o.lookUp = 2.2;
     o.fov = 40;
     o.speed = 0.012;
-    o.shift = window.innerWidth > window.innerHeight ? -3.1 : 0;
+    const wide = window.innerWidth > window.innerHeight;
+    o.shift = wide ? -3.1 : 0;
+    if (!wide) o.lookUp = -0.6;
     o.angle = this.bird.yaw + Math.PI * 0.14;
     if (!first) this.rig.ease(this.engine.camera, 4);
     this.wakeSleep = 1;
@@ -336,7 +339,13 @@ export class Game {
     items.push({ label: 'The road', run: () => this.openRoad() });
     items.push({ label: 'How to fly', run: () => this.openHow(() => this.ui.closePanel()) });
     items.push({ label: 'Settings', run: () => this.openSettings(() => this.ui.closePanel()) });
+    if (document.fullscreenEnabled) items.push({ label: 'Full screen', run: () => this.fullscreen() });
     this.ui.showTitle(d.arrived ? 'The water is full tonight.' : 'A long way south, one day behind.', items);
+  }
+
+  private fullscreen(): void {
+    if (document.fullscreenElement) void document.exitFullscreen();
+    else void document.documentElement.requestFullscreen().catch(() => {});
   }
 
   private restart(): void {
@@ -593,6 +602,7 @@ export class Game {
       { label: 'The road', run: () => this.ui.road(this.data, (id, seed) => { this.paused = false; void this.freeFlight(id, seed); }, () => this.pauseMenu()) },
       { label: 'How to fly', run: () => this.ui.howto(this.input.device === 'touch', () => this.pauseMenu()) },
       { label: 'Settings', run: () => this.ui.settings(this.data.settings, () => this.applySettings(), () => this.pauseMenu()) },
+      ...(document.fullscreenEnabled ? [{ label: 'Full screen', run: () => this.fullscreen() }] : []),
       { label: 'Leave the sky', note: 'the day will keep', run: () => void this.leave() },
     ];
     this.ui.pause('Resting', items);
@@ -691,7 +701,7 @@ export class Game {
 
   // ---------------------------------------------------------------- the frame
   frame(dt: number): void {
-    dt = Math.min(dt, 0.1);
+    dt = Math.max(0, Math.min(dt, 0.1));
     this.time += this.paused ? 0 : dt;
     if (this.phase === 'boot' || !this.world.loaded) return;
     const inp = this.input.read();
@@ -1102,8 +1112,8 @@ export class Game {
     }
     const kbd = this.input.device !== 'touch';
     const r = this.rec;
-    this.at(4.2, () => this.ui.verse(this.world.mv.closing, 6200));
-    this.at(11.5, () => {
+    this.at(3.4, () => this.ui.verse(this.world.mv.closing, 5600));
+    this.at(9.6, () => {
       this.ui.log([
         ['flown', `${(r.distance / 1000).toFixed(1)} km`],
         ['highest', `${Math.round(r.highest)} m`],
@@ -1111,7 +1121,7 @@ export class Game {
         ['feathers', `${r.feathers} of ${r.feathersTotal}`],
       ]);
     });
-    this.at(13.0, () => {
+    this.at(10.6, () => {
       this.readyToLeave = true;
       this.ui.whisper(this.free ? (kbd ? '<kbd>Space</kbd> to fly again, <kbd>Esc</kbd> for the road' : 'Hold wings to fly again') : kbd ? '<kbd>Space</kbd> to sleep' : 'Hold wings to sleep', 0);
       this.ui.touch(this.input.device === 'touch');
@@ -1212,6 +1222,11 @@ export class Game {
   }
 
   // ------------------------------------------------------------------ presenting
+  private bow(): number {
+    if (this.world.land.id !== 'rooms') return 0;
+    return sm(0.6, 0.72, this.lightP) * (1 - sm(0.95, 1, this.lightP));
+  }
+
   private present(dt: number, look: { x: number; y: number }, inp: FlightInput): void {
     const w = this.world;
     const b = this.bird;
@@ -1239,6 +1254,7 @@ export class Game {
     this.night = this.phase === 'night' ? nightTarget : 0;
     const lp = this.phase === 'photo' ? this.photoP : this.lightP;
     w.light(clamp01(lp), this.night);
+    G.uRainbow.value = this.bow();
 
     // birds
     w.feathers.begin();

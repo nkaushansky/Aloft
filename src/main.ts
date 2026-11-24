@@ -37,8 +37,8 @@ function start(): void {
     game.frame(dt);
 
     // adaptive resolution: measured over a second, changed only when sure
-    if (document.hidden || dt > 0.25) return;
-    acc += dt;
+    if (document.hidden || dt <= 0) return;
+    acc += Math.min(dt, 0.4);
     n++;
     if (acc > 1) {
       const ms = (acc / n) * 1000;

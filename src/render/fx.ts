@@ -433,7 +433,7 @@ void main(){
   float st = smoothstep(0.0, 0.35, flow) * smoothstep(1.0, 0.45, flow);
   float w = (0.55 + 0.0042 * d) * (0.3 + 0.9 * st);
   p += side * position.x * w;
-  vA = B.z * uVigor * st * smoothstep(0.0, 0.05, u) * smoothstep(1.0, 0.72, u) * smoothstep(10.0, 40.0, d) * smoothstep(2600.0, 900.0, d);
+  vA = B.z * uVigor * st * smoothstep(0.0, 0.05, u) * smoothstep(1.0, 0.72, u) * smoothstep(26.0, 130.0, d) * smoothstep(2600.0, 900.0, d);
   vA *= 0.27 + 0.78 * uReveal;
   vS = position.x; vW = p; vU = u;
   gl_Position = B.z < 0.5 ? vec4(0.0, 0.0, 2.0, 1.0) : projectionMatrix * viewMatrix * vec4(p, 1.0);
@@ -564,7 +564,7 @@ void main(){
   float d = length(c - uCamPos);
   vec3 right = vec3(viewMatrix[0][0], viewMatrix[1][0], viewMatrix[2][0]);
   vec3 up = vec3(viewMatrix[0][1], viewMatrix[1][1], viewMatrix[2][1]);
-  float s = 1.7 * (1.0 + d / 130.0);
+  float s = 1.25 * (1.0 + d / 110.0);
   vW = c + (right * position.x + up * position.y) * s;
   vQ = position.xy;
   vA = iA.w * smoothstep(1500.0, 900.0, d) * (0.75 + 0.25 * sin(t * 2.0));
@@ -580,7 +580,7 @@ void main(){
   float r = length(vQ);
   float a = exp(-r * r * 5.0) * smoothstep(1.0, 0.6, r) + 0.6 * exp(-r * r * 60.0);
   vec3 c = (uWarm * 0.7 + uKeyCol * 0.22 + uAmbSky * 0.25 + 0.04);
-  o = vec4(c * a * vA * 0.75 * softDepth(2.0), 1.0);
+  o = vec4(c * a * vA * 0.5 * softDepth(2.0), 1.0);
 }
 `;
 

@@ -135,7 +135,7 @@ void main(){
   vec3 V = normalize(uCamPos - vW);
   vec3 N = normalize(vN);
   if (dot(N, V) < 0.0) N = -N;
-  vec3 col = mix(vec3(0.84), vec3(0.035), smoothstep(0.35, 0.95, vTone));
+  vec3 col = mix(vec3(1.05), vec3(0.035), smoothstep(0.35, 0.95, vTone));
   float sh = terrainShadow(vW) * cloudShadowAt(vW);
   float nl = sat((dot(N, uKeyDir) + 0.3) / 1.3);
   vec3 c = col * (uKeyCol * nl * sh + ambient(N, 0.85));
@@ -190,11 +190,11 @@ void main(){
   // they stand in companies, not evenly
   stand += (vec2(nz(stand / 190.0).r, nz(stand / 190.0 + 0.5).r) - 0.5) * 60.0;
   float lane = pow(iR.x, 0.8);
-  float rad = 46.0 + 470.0 * lane;
+  float rad = 38.0 + 400.0 * lane;
   float dir = iR.w > 0.2 ? 1.0 : -1.0;
   float w = dir * (13.0 + 4.0 * iR.y) / rad;
   float a = a0 + w * uTime;
-  float h = 12.0 + 150.0 * pow(iR.z, 0.9) * (0.35 + 0.65 * lane) + 9.0 * sin(uTime * 0.21 + iR.w * 30.0 + a * 2.0);
+  float h = 11.0 + 130.0 * pow(iR.z, 1.1) * (0.3 + 0.7 * lane) + 9.0 * sin(uTime * 0.21 + iR.w * 30.0 + a * 2.0);
   vec3 fly = vec3(cos(a) * rad, h, sin(a) * rad);
   fly.xz += 30.0 * vec2(sin(a * 2.0 + iR.z * 6.0), cos(a * 3.0 + iR.x * 6.0)) * lane;
   vec2 wp = uCenter.xz + stand;

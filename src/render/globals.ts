@@ -26,6 +26,7 @@ export const G = {
   uStars: { value: 0 },
   uAurora: { value: 0 },
   uCirrus: { value: 0.5 },
+  uRainbow: { value: 0 },
   uWind: { value: new THREE.Vector2(0, -6) },
   uGust: { value: 1 },
   uNoise: { value: null as THREE.Texture | null },

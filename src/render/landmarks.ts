@@ -460,6 +460,7 @@ export class Landmarks {
           const geo = whaleGeo();
           const m = new THREE.Mesh(geo, worldMaterial(S_VERT, '#define WET\n' + S_FRAG, { uTint: { value: new THREE.Color(1, 1, 1) } }, {}));
           m.rotation.order = 'YXZ';
+          m.scale.setScalar(1.55);
           this.root.add(m);
           this.whale = m;
           this.whaleHome.set(d.x, 0, d.z);
@@ -507,7 +508,7 @@ export class Landmarks {
       const cyc = (t * 0.07) % 1;
       const rise = Math.sin(Math.PI * Math.min(1, Math.max(0, (cyc - 0.2) / 0.42)));
       this.whaleUp = rise;
-      w.position.set(x, -6.4 + rise * 6.1, z);
+      w.position.set(x, -8.6 + rise * 7.4, z);
       w.rotation.set(Math.cos(Math.PI * Math.min(1, Math.max(0, (cyc - 0.2) / 0.42))) * 0.2 * (rise > 0 ? 1 : 0), Math.atan2(Math.sin(a), -Math.cos(a)), 0, 'YXZ');
       if (rise > 0.55 && rise < 0.95 && cyc < 0.45) {
         this.blowT += dt;
@@ -679,7 +680,11 @@ void main(){
   float sh = keyShadow(vW + N * 0.1, 0.0012);
   vec3 c = litSurface(col, N, V, ao, sh, 0.1);
   vec3 H = normalize(V + uKeyDir);
+  #ifdef WET
+  c += uKeyCol * sh * pow(sat(dot(N, H)), 90.0) * 0.35;
+  #else
   c += uKeyCol * sh * pow(sat(dot(N, H)), 48.0) * wet * 0.9;
+  #endif
   #ifdef WET
   c += (uHorizon * 0.3 + uMid * 0.2) * pow(1.0 - sat(dot(N, V)), 4.0);
   #endif

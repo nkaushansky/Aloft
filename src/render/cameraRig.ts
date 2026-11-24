@@ -114,6 +114,11 @@ export class CameraRig {
       fov = f.fov;
       this.keepAbove(this.pos, terrain, 0.4);
     }
+    // tall screens need a taller lens to keep the sky wide
+    if (cam.aspect < 1.15 && this.mode !== 'fixed') {
+      const minH = this.mode === 'chase' ? 0.46 : 0.34;
+      fov = Math.max(fov, Math.min(82, (2 * Math.atan(minH / cam.aspect) * 180) / Math.PI));
+    }
     this.fov += (fov - this.fov) * (this.mode === 'fixed' ? 1 : 1 - Math.exp(-dt * 1.6));
     cam.position.copy(this.pos);
     cam.up.set(0, 1, 0);

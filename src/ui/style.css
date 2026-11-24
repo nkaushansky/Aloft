@@ -50,7 +50,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #0b0d14; col
 .card { left: 0; right: 0; top: 24vh; text-align: center; opacity: 0; transition: opacity 2.2s ease; }
 .card .num { font-family: 'Forum', serif; font-size: clamp(16px, 1.5vw, 20px); letter-spacing: 0.5em; text-indent: 0.5em; color: var(--soft); }
 .card .name { font-family: 'Forum', serif; font-size: clamp(38px, 6vw, 84px); letter-spacing: 0.06em; line-height: 1.05; margin-top: 0.18em; }
-.verse { left: 8vw; right: 8vw; bottom: calc(22vh + var(--sb)); text-align: center; font-style: italic; font-size: clamp(20px, 2.3vw, 31px); line-height: 1.42; opacity: 0; transition: opacity 1.9s ease; text-wrap: balance; }
+.verse { left: 8vw; right: 8vw; bottom: calc(17vh + var(--sb)); text-align: center; font-style: italic; font-size: clamp(20px, 2.3vw, 31px); line-height: 1.42; opacity: 0; transition: opacity 1.9s ease; text-wrap: balance; }
 .verse span { display: block; opacity: 0; transition: opacity 1.9s ease; }
 .verse span.on { opacity: 1; }
 .whisper { left: 6vw; right: 6vw; bottom: calc(118px + var(--sb)); text-align: center; font-size: clamp(15px, 1.35vw, 18px); color: var(--soft); opacity: 0; transition: opacity 1.1s ease; text-wrap: balance; }

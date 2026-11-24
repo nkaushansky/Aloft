@@ -31,6 +31,7 @@ uniform vec4 uHalo;           // wide, mid, tight, disc
 uniform float uStars;
 uniform float uAurora;
 uniform float uCirrus;
+uniform float uRainbow;
 uniform vec2 uWind;           // m/s, direction it travels toward (x,z)
 uniform float uGust;
 
@@ -61,6 +62,7 @@ float hash12(vec2 p){ vec3 p3 = fract(vec3(p.xyx) * .1031); p3 += dot(p3, p3.yzx
 vec2 hash22(vec2 p){ vec3 p3 = fract(vec3(p.xyx) * vec3(.1031, .1030, .0973)); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.xx + p3.yz) * p3.zy); }
 float lum(vec3 c){ return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
 vec4 nz(vec2 p){ return texture(uNoise, p); }
+vec4 nz0(vec2 p){ return textureLod(uNoise, p, 0.0); } // safe inside loops and branches
 `;
 
 export const SKY = /* glsl */ `
@@ -154,7 +156,7 @@ export const SHADOWS = /* glsl */ `
 float terrainShadow(vec3 wp){
   vec2 uv = wp.xz / (2.0 * uWorld.x) + 0.5;
   if (uv.x < 0.0 || uv.y < 0.0 || uv.x > 1.0 || uv.y > 1.0) return 1.0;
-  vec2 s = texture(uShadowTex, uv).rg;
+  vec2 s = textureLod(uShadowTex, uv, 0.0).rg;
   float w = 1.5 + s.g * 0.012;
   return smoothstep(-w, w, wp.y - s.r + 0.6);
 }
@@ -162,7 +164,7 @@ float cloudShadowAt(vec3 wp){
   if (uCloudShadow <= 0.0) return 1.0;
   float el = max(uKeyDir.y, 0.16);
   vec2 p = wp.xz + uKeyDir.xz / el * max(uCloud.x + 120.0 - wp.y, 0.0);
-  float c = texture(uWeather, (p + uCloudOff) / (2.0 * uWeatherHalf) + 0.5).a;
+  float c = textureLod(uWeather, (p + uCloudOff) / (2.0 * uWeatherHalf) + 0.5, 0.0).a;
   float above = smoothstep(uCloud.y, uCloud.x, wp.y);
   return 1.0 - uCloudShadow * smoothstep(0.12, 0.7, c) * above;
 }

@@ -233,7 +233,7 @@ vec3 reflectScene(vec3 p, vec3 r){
     vec2 uv = sc.xy / sc.w * 0.5 + 0.5;
     vec2 e = smoothstep(vec2(0.0), vec2(0.09), uv) * smoothstep(vec2(1.0), vec2(0.91), uv);
     float m = e.x * e.y;
-    if (m > 0.0 && texture(tDepth, uv).r >= 0.9999999) res = mix(res, min(texture(tScene, uv).rgb, vec3(14.0)), m);
+    if (m > 0.0 && textureLod(tDepth, uv, 0.0).r >= 0.9999999) res = mix(res, min(textureLod(tScene, uv, 0.0).rgb, vec3(14.0)), m);
   }
   // march for land
   float s = 1.5;
@@ -247,22 +247,22 @@ vec3 reflectScene(vec3 p, vec3 r){
     if (c.w <= 0.0) break;
     vec2 uv = c.xy / c.w * 0.5 + 0.5;
     if (uv.x < 0.0 || uv.y < 0.0 || uv.x > 1.0 || uv.y > 1.0) break;
-    float z = texture(tDepth, uv).r;
+    float z = textureLod(tDepth, uv, 0.0).r;
     if (z < 0.9999999){
       float lz = linZ(z);
-      if (c.w > lz && c.w - lz < s * 2.2 + 6.0){
+      if (c.w > lz && c.w - lz < s * 1.25 + 0.35 + c.w * 0.012){
         // refine
         float a = prev, b = prev + t;
         for (int k = 0; k < 4; k++){
           float m = 0.5 * (a + b);
           vec4 cm = uVP * vec4(p + r * m, 1.0);
           vec2 um = cm.xy / cm.w * 0.5 + 0.5;
-          if (cm.w > linZ(texture(tDepth, um).r)) b = m; else a = m;
+          if (cm.w > linZ(textureLod(tDepth, um, 0.0).r)) b = m; else a = m;
         }
         vec4 ch = uVP * vec4(p + r * b, 1.0);
         vec2 uh = ch.xy / ch.w * 0.5 + 0.5;
         vec2 e = smoothstep(vec2(0.0), vec2(0.07), uh) * smoothstep(vec2(1.0), vec2(0.93), uh);
-        vec3 hit = min(texture(tScene, uh).rgb, vec3(10.0));
+        vec3 hit = min(textureLod(tScene, uh, 0.0).rgb, vec3(10.0));
         res = mix(res, hit, e.x * e.y);
         break;
       }

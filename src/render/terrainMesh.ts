@@ -369,10 +369,10 @@ void main(){
     float rkN = smoothstep(0.2, 0.8, mk.b);
     vec4 q1 = tri(vW, tw, 1.0 / 71.0), q2 = tri(vW + 1.7, tw, 1.0 / 71.0);
     vec4 r1 = tri(vW, tw, 1.0 / 17.0), r2 = tri(vW + 0.45, tw, 1.0 / 17.0);
-    vec3 g1 = vec3(q1.r - q2.r, (q1.b - q2.b) * 0.5, q1.g - q2.g);
-    vec3 g2 = vec3(r1.b - r2.b, r1.r - r2.r, r1.g - r2.g) * (0.35 + 0.65 * near);
+    vec3 g1 = vec3(q1.r - q2.r, (q1.b - q2.b) * 0.4, (q1.b - q2.b) * 0.5 + (q1.r - q2.r) * 0.5);
+    vec3 g2 = vec3(r1.r - r2.r, r1.b - r2.b, (r1.b - r2.b) * 0.7) * (0.35 + 0.65 * near);
     float soil = 1.0 - smoothstep(0.1, 0.5, mk.r) * smoothstep(0.0, 0.3, vCan);
-    N = normalize(N + (g1 * (0.5 + 2.6 * rkN) + g2 * (0.35 + 1.9 * rkN)) * mid * soil);
+    N = normalize(N + (g1 * (0.5 + 2.3 * rkN) + g2 * (0.35 + 1.3 * rkN)) * mid * soil);
   }
 
   // --- paint --------------------------------------------------------------

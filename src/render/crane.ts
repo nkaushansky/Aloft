@@ -50,7 +50,7 @@ export function glidePose(): Pose {
 }
 
 const F_STRIDE = 16;
-const FEATHERS_PER_BIRD = 310;
+const FEATHERS_PER_BIRD = 350;
 
 /** One shared instanced draw holding every near bird's feathers. */
 export class FeatherField {
@@ -705,7 +705,7 @@ void main(){
   vec3 N = normalize(vN);
   if (dot(N, V) < 0.0) N = -N;
   float t = vQ.y, x = vQ.x;
-  vec3 white = vec3(0.86, 0.858, 0.85);
+  vec3 white = vec3(0.92, 0.917, 0.905);
   float barb = sin((t * 46.0 + abs(x) * 9.0 + vC.w * 30.0)) * 0.5 + 0.5;
   float shaft = exp(-x * x * 180.0);
   vec3 col = white * (0.94 + 0.06 * barb);
@@ -714,8 +714,11 @@ void main(){
   col = mix(col, vec3(0.26, 0.1, 0.038) * (0.7 + 0.6 * fract(vC.w * 7.3)), sat(vC.y * (0.75 + 0.6 * t)));
   col *= 1.0 - 0.10 * shaft;
   col *= mix(0.84, 1.0, smoothstep(0.0, 0.3, t));
-  float edge = smoothstep(0.65, 1.0, abs(x));
-  col *= 1.0 - 0.14 * edge;
+  float edge = smoothstep(0.6, 1.0, abs(x));
+  col *= 1.0 - 0.2 * edge;
+  // each feather ends in a soft dark lip, so the courses read as scallops
+  float lip = smoothstep(0.74, 0.97, t) * (1.0 - dk);
+  col *= 1.0 - 0.3 * lip;
   float sh = terrainShadow(vW) * cloudShadowAt(vW) * csmShadow(vW + N * 0.05, 0.0011);
   float nl = sat((dot(N, uKeyDir) + 0.28) / 1.28);
   vec3 c = col * (uKeyCol * nl * sh * 1.04 + ambient(N, 0.82));
@@ -724,6 +727,7 @@ void main(){
   float thru = pow(sat(dot(-V, uKeyDir) * 0.5 + 0.5), 4.0);
   vec3 tint = mix(col, vec3(0.98, 0.86, 0.7), 0.35 * (1.0 - dk));
   c += tint * uKeyCol * (back * 0.34 + thru * 0.5) * sh * (1.0 - 0.97 * dk) * smoothstep(0.1, 0.7, t);
+  c *= 1.0 + 0.3 * (1.0 - dk);
   float rim = pow(1.0 - sat(dot(N, V)), 4.0);
   c += (uAmbSky * 0.3 + uKeyCol * 0.1 * sh) * rim * lum(col);
   o = vec4(c, 1.0);
@@ -759,6 +763,7 @@ void main(){
   float sh = terrainShadow(vW) * cloudShadowAt(vW) * csmShadow(vW + N * 0.05, 0.0011);
   float nl = sat((dot(N, uKeyDir) + 0.26) / 1.26);
   vec3 c = col * (uKeyCol * nl * sh * 1.04 + ambient(N, 0.82));
+  c *= 1.0 + 0.3 * sat(lum(col) * 1.4);
   float rim = pow(1.0 - sat(dot(N, V)), 3.0);
   float thru = pow(sat(dot(-V, uKeyDir) * 0.5 + 0.5), 5.0);
   c += (uAmbSky * 0.3 + uKeyCol * sh * (0.1 + 0.8 * thru)) * rim * lum(col);

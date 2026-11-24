@@ -243,7 +243,12 @@ class Gamepads implements Source {
   ) {}
 
   read(): FlightInput {
-    const pads = navigator.getGamepads?.() ?? [];
+    let pads: ReadonlyArray<Gamepad | null> = [];
+    try {
+      pads = navigator.getGamepads?.() ?? [];
+    } catch {
+      return { pitch: 0, roll: 0, beat: false }; // framed without permission
+    }
     for (const p of pads) {
       if (!p || !p.connected) continue;
       const dz = (v: number) => (Math.abs(v) < 0.14 ? 0 : (v - Math.sign(v) * 0.14) / 0.86);

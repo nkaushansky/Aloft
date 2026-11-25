@@ -1,7 +1,7 @@
 {
   "name": "aloft",
   "private": true,
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Aloft \u2014 a late young crane, six lands south. A quiet flight.",
   "type": "module",
   "scripts": {

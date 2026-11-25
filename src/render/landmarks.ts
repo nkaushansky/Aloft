@@ -137,13 +137,8 @@ export class Landmarks {
   private readonly shadowRoot = new THREE.Group();
   private readonly fxRoot = new THREE.Group();
   private bell: THREE.Object3D | null = null;
-  private whale: THREE.Mesh | null = null;
-  private whaleHome = new THREE.Vector3();
   private beam: THREE.Mesh | null = null;
-  whaleUp = 0;
   bellSwing = 0;
-  private blowT = 0;
-  onBlow: ((x: number, y: number, z: number) => void) | null = null;
 
   constructor(
     scene: THREE.Scene,
@@ -167,7 +162,6 @@ export class Landmarks {
     }
     this.list.length = 0;
     this.bell = null;
-    this.whale = null;
     this.beam = null;
   }
 
@@ -454,17 +448,10 @@ export class Landmarks {
           top = 35;
           break;
         }
-        case 'whale': {
-          const geo = whaleGeo();
-          const m = new THREE.Mesh(geo, worldMaterial(S_VERT, '#define WET\n' + S_FRAG, { uTint: { value: new THREE.Color(1, 1, 1) } }, {}));
-          m.rotation.order = 'YXZ';
-          m.scale.setScalar(1.55);
-          this.root.add(m);
-          this.whale = m;
-          this.whaleHome.set(d.x, 0, d.z);
-          top = 2;
+        case 'whale':
+          // the swimmers themselves are in whales.ts; seen from high up still counts
+          top = 160;
           break;
-        }
         case 'cairn': {
           const s = new Solid(rng);
           const red = mv.id === 'rooms';
@@ -497,76 +484,7 @@ export class Landmarks {
       this.beam.rotation.y = t * 0.42;
       this.beam.visible = G.uStars.value > 0.08;
     }
-    if (this.whale) {
-      const w = this.whale;
-      const a = t * 0.045;
-      const R = 90;
-      const x = this.whaleHome.x + Math.cos(a) * R;
-      const z = this.whaleHome.z + Math.sin(a) * R;
-      const cyc = (t * 0.07) % 1;
-      const rise = Math.sin(Math.PI * Math.min(1, Math.max(0, (cyc - 0.2) / 0.42)));
-      this.whaleUp = rise;
-      w.position.set(x, -8.6 + rise * 7.4, z);
-      w.rotation.set(Math.cos(Math.PI * Math.min(1, Math.max(0, (cyc - 0.2) / 0.42))) * 0.2 * (rise > 0 ? 1 : 0), Math.atan2(Math.sin(a), -Math.cos(a)), 0, 'YXZ');
-      if (rise > 0.55 && rise < 0.95 && cyc < 0.45) {
-        this.blowT += dt;
-        if (this.blowT > 0.03) {
-          this.blowT = 0;
-          const f = -5.2;
-          this.onBlow?.(x - Math.sin(w.rotation.y) * -f * -1, w.position.y + 3.2, z - Math.cos(w.rotation.y) * -f * -1);
-        }
-      }
-    }
   }
-
-  whalePos(): THREE.Vector3 | null {
-    return this.whale ? this.whale.position : null;
-  }
-}
-
-function whaleGeo(): THREE.BufferGeometry {
-  const pos: number[] = [];
-  const nor: number[] = [];
-  const col: number[] = [];
-  const idx: number[] = [];
-  const R = 22;
-  const S = 14;
-  for (let i = 0; i <= R; i++) {
-    const t = i / R;
-    const z = -11 + t * 24;
-    const prof = Math.pow(Math.sin(Math.PI * Math.min(1, Math.pow(t, 0.62) * 0.99 + 0.005)), 0.8);
-    const rx = 2.7 * prof + 0.1;
-    const ry = 2.3 * prof + 0.1;
-    const cy = -0.9 * Math.pow(t, 2) * 0 + Math.sin(t * 2.6) * 0.5;
-    for (let s = 0; s <= S; s++) {
-      const a = (s / S) * Math.PI * 2;
-      pos.push(Math.cos(a) * rx, cy + Math.sin(a) * ry + (t > 0.62 && t < 0.72 && Math.abs(Math.cos(a)) < 0.3 && Math.sin(a) > 0 ? 0.7 : 0), z);
-      nor.push(Math.cos(a), Math.sin(a), 0);
-      const belly = Math.sin(a) < -0.35 ? 0.24 : 0.045;
-      col.push(belly, belly * 1.05, belly * 1.15, 0);
-    }
-  }
-  for (let i = 0; i < R; i++)
-    for (let s = 0; s < S; s++) {
-      const a = i * (S + 1) + s;
-      idx.push(a, a + 1, a + S + 1, a + 1, a + S + 2, a + S + 1);
-    }
-  // flukes
-  const fk = pos.length / 3;
-  const fl = [[0, 0.4, 12], [4.2, 0.7, 15.6], [1.2, 0.5, 15], [0, 0.5, 14.4], [-1.2, 0.5, 15], [-4.2, 0.7, 15.6]];
-  for (const p of fl) {
-    pos.push(...p);
-    nor.push(0, 1, 0);
-    col.push(0.05, 0.055, 0.06, 0);
-  }
-  idx.push(fk, fk + 2, fk + 1, fk, fk + 3, fk + 2, fk, fk + 4, fk + 3, fk, fk + 5, fk + 4);
-  idx.push(fk, fk + 1, fk + 2, fk, fk + 2, fk + 3, fk, fk + 3, fk + 4, fk, fk + 4, fk + 5);
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
-  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 4));
-  g.setIndex(idx);
-  return g;
 }
 
 function beamGeo(): THREE.BufferGeometry {

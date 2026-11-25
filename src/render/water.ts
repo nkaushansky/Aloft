@@ -79,6 +79,8 @@ export class Water {
       wGlowTex: { value: this.glowTex },
       wCenter: { value: new THREE.Vector2() },
       wWake: { value: new THREE.Vector4(0, 0, 0, 0) },
+      wWhale: { value: [0, 1, 2, 3, 4, 5].map(() => new THREE.Vector4()) },
+      wWhaleB: { value: [0, 1, 2, 3, 4, 5].map(() => new THREE.Vector2(15, -8)) },
       wRings: { value: [0, 1, 2, 3, 4, 5].map(() => new THREE.Vector4(0, 0, -100, 0)) },
       uSsr: { value: 22 },
     };
@@ -143,23 +145,38 @@ const vec4 GW[4] = vec4[4](
   vec4(-0.28, -0.96, 57.0, 0.72),
   vec4(0.74, -0.67, 34.0, 0.36),
   vec4(-0.8, -0.6, 21.0, 0.2));
-vec3 swell(vec2 p, out vec3 nrm){
+vec3 swell(vec2 p){
   vec3 o = vec3(0.0);
-  vec3 dx = vec3(1.0, 0.0, 0.0), dz = vec3(0.0, 0.0, 1.0);
   for (int i = 0; i < 4; i++){
     vec2 D = normalize(GW[i].xy);
     float k = 2.0 * PI / GW[i].z;
     float A = GW[i].w * wSwell;
-    float w = sqrt(9.8 * k) * 0.8;
-    float ph = k * dot(D, p) - w * uTime + float(i) * 1.7;
+    float ph = k * dot(D, p) - sqrt(9.8 * k) * 0.8 * uTime + float(i) * 1.7;
+    float c = cos(ph), s = sin(ph);
+    o += vec3(D.x * 0.55 * A * c, A * s, D.y * 0.55 * A * c);
+  }
+  return o;
+}
+// The same waves, per pixel. Each one bows out before it is finer than the
+// pixels can hold, so the sea never shimmers or steps; what it loses in shape
+// it gives back as roughness.
+vec3 swellNormal(vec2 p, float foot, out float lost){
+  vec3 dx = vec3(1.0, 0.0, 0.0), dz = vec3(0.0, 0.0, 1.0);
+  lost = 0.0;
+  for (int i = 0; i < 4; i++){
+    vec2 D = normalize(GW[i].xy);
+    float k = 2.0 * PI / GW[i].z;
+    float keep = 1.0 - smoothstep(GW[i].z * 0.10, GW[i].z * 0.36, foot);
+    float A = GW[i].w * wSwell;
+    float ph = k * dot(D, p) - sqrt(9.8 * k) * 0.8 * uTime + float(i) * 1.7;
     float c = cos(ph), s = sin(ph);
     float Q = 0.55;
-    o += vec3(D.x * Q * A * c, A * s, D.y * Q * A * c);
+    lost += (1.0 - keep) * A * k;
+    A *= keep;
     dx += vec3(-Q * A * k * D.x * D.x * s, A * k * D.x * c, -Q * A * k * D.x * D.y * s);
     dz += vec3(-Q * A * k * D.x * D.y * s, A * k * D.y * c, -Q * A * k * D.y * D.y * s);
   }
-  nrm = normalize(cross(dz, dx));
-  return o;
+  return normalize(cross(dz, dx));
 }
 `;
 
@@ -168,25 +185,22 @@ ${FULL}
 ${WAVES}
 uniform vec2 wCenter;
 out vec3 vW;
-out vec3 vN;
+out vec2 vX;
 out float vH;
 void main(){
   vec2 xz = position.xz + wCenter;
-  vec3 n = vec3(0.0, 1.0, 0.0);
   vec3 p = vec3(xz.x, 0.0, xz.y);
-  float d = length(vec3(xz.x, 0.0, xz.y) - uCamPos);
   if (wSwell > 0.0){
-    vec3 nn;
-    vec3 o = swell(xz, nn);
-    float f = 1.0 - smoothstep(190.0, 262.0, max(abs(position.x), abs(position.z)));
-    // calmer in the lee of land
-    float lee = smoothstep(0.0, -14.0, terrainH(xz));
-    p += o * f * lee;
-    n = normalize(mix(vec3(0.0, 1.0, 0.0), nn, lee));
+    // fades by true distance, never by place in the grid: the grid jumps, the sea must not
+    float f = 1.0 - smoothstep(150.0, 250.0, length(xz - uCamPos.xz));
+    if (f > 0.0){
+      float lee = smoothstep(0.0, -14.0, terrainH(xz));
+      p += swell(xz) * f * lee;
+    }
   }
   vH = p.y;
   vW = p;
-  vN = n;
+  vX = xz;
   gl_Position = projectionMatrix * viewMatrix * vec4(p, 1.0);
 }
 `;
@@ -194,15 +208,18 @@ void main(){
 const FRAG = /* glsl */ `
 ${FULL}
 ${VIEWRAY}
+${WAVES}
 in vec3 vW;
-in vec3 vN;
+in vec2 vX;
 in float vH;
 layout(location = 0) out vec4 o;
 uniform sampler2D tDepth, tOpaque, tScene, tClouds, wGlowTex;
 uniform mat4 uVP;
 uniform vec3 wDeep, wShallow, wGlow, wAbs;
-uniform float wClarity, wChop, wSwell, wGlowAmt, uSsr, uCloudsOn;
+uniform float wClarity, wChop, wGlowAmt, uSsr, uCloudsOn;
 uniform vec4 wRings[6];
+uniform vec4 wWhale[6];   // x, z, yaw, amount
+uniform vec2 wWhaleB[6];  // length, depth
 
 vec2 grad(vec2 p, float s, vec2 scroll){
   vec2 q = p / s + scroll;
@@ -310,6 +327,15 @@ void main(){
     float band = exp(-pow((r - R) / (0.5 + age * 0.25), 2.0));
     g += q / r * cos((r - R) * 5.0) * band * wRings[i].w * 0.35 * exp(-age * 0.55);
   }
+  vec3 vN = vec3(0.0, 1.0, 0.0);
+  float lost = 0.0;
+  if (wSwell > 0.0){
+    float px = dist * 2.0 * uProj.y / uRes.y;
+    float foot = px / clamp(V.y, 0.045, 1.0);
+    float lee = smoothstep(0.0, -14.0, bed);
+    vN = normalize(mix(vec3(0.0, 1.0, 0.0), swellNormal(vX, foot, lost), lee));
+    lost *= lee;
+  }
   vec3 N = normalize(vN + vec3(-g.x, 0.0, -g.y));
   // distant water is rougher in aggregate: tip the mean normal up a little
   float ndv = max(dot(N, V), 0.02);
@@ -319,7 +345,7 @@ void main(){
   vec3 R = reflect(-V, N);
   R.y = abs(R.y) + 0.004;
   // far chop smears reflections vertically
-  R.y += (0.02 + 0.05 * wChop) * smoothstep(200.0, 3000.0, dist) * hash12(gl_FragCoord.xy + fract(uTime) * 17.0);
+  R.y += ((0.01 + 0.025 * wChop) * smoothstep(200.0, 3000.0, dist)) + lost * 0.3;
   R = normalize(R);
   vec3 refl = reflectScene(vW, R);
 
@@ -350,13 +376,14 @@ void main(){
   // --- the path of light ----------------------------------------------------
   vec3 Ng = normalize(vN + vec3(-g.x, 0.0, -g.y) * 1.2 + vec3(0.0));
   vec3 H = normalize(V + uKeyDir);
-  float rough = mix(260.0, 34.0, smoothstep(40.0, 2500.0, dist));
+  float rough = mix(260.0, 34.0, smoothstep(40.0, 2500.0, dist)) / (1.0 + lost * 6.0);
   float sp = pow(sat(dot(Ng, H)), rough);
   // a broad soft lobe stretched toward the sun: the road of light
   vec3 Nw = normalize(vec3(Ng.x * 0.5, 1.0, Ng.z * 0.5));
   float sp2 = pow(sat(dot(Nw, H)), mix(90.0, 26.0, smoothstep(20.0, 1800.0, dist)));
-  float tw = nz(vW.xz / 23.0 - wd * uTime * 0.02).a * 0.5 + nz(vW.xz / 5.3 + uTime * 0.03).a * 0.5;
-  float gl = 0.35 + 1.5 * smoothstep(0.5, 0.85, tw);
+  // glitter from two sheets of smooth noise sliding over each other: it flows, it doesn't flicker
+  float tw = nz(vW.xz / 41.0 - wd * uTime * 0.016).r + nz(vW.zx / 33.0 + vec2(uTime * 0.011, -uTime * 0.013)).r - 0.5;
+  float gl = 0.35 + 1.5 * smoothstep(0.46, 0.78, tw);
   float lowSun = smoothstep(0.35, 0.02, uKeyDir.y);
   c += uKeyCol * sh * (sp * gl * (0.6 + 2.2 * lowSun) * 1.1 + sp2 * (0.06 + 0.34 * lowSun) * (0.45 + 0.9 * smoothstep(0.42, 0.7, tw)));
 
@@ -375,6 +402,29 @@ void main(){
     float wake = low * exp(-birdD * birdD / 60.0) * 1.5;
     float gA = band * band * (0.025 + fil * (0.16 + 0.55 * bloomP) + crest * 0.25) + pts * (0.05 + 0.5 * band) + wake * (0.12 + fil * 0.6);
     float night = sat(uStars * 1.4);
+    // whales: the glow wakes around them, and their bodies are the dark in it
+    for (int i = 0; i < 6; i++){
+      float wa = wWhale[i].w;
+      if (wa <= 0.0) continue;
+      vec2 qw = vW.xz - wWhale[i].xy;
+      if (dot(qw, qw) > 26000.0) continue;
+      vec2 f = vec2(-sin(wWhale[i].z), -cos(wWhale[i].z));
+      float al = dot(qw, f), la = dot(qw, vec2(-f.y, f.x));
+      float hl = wWhaleB[i].x * 0.5;
+      float e = length(vec2(la / (wWhaleB[i].x * 0.16), al / hl));
+      float rim = exp(-pow((e - 1.1) / 0.24, 2.0));
+      float inside = smoothstep(1.02, 0.78, e);
+      float bh = -al - hl * 0.55;
+      float wk = 0.0;
+      if (bh > 0.0){
+        float arm = abs(la) - (wWhaleB[i].x * 0.07 + bh * 0.17);
+        wk = exp(-arm * arm / (1.6 + bh * 0.12)) * exp(-bh / 46.0) * 0.8;
+        wk += exp(-la * la / (wWhaleB[i].x * 0.22 + bh * 0.25)) * exp(-bh / 30.0) * 0.75;
+      }
+      float dimD = mix(0.5, 1.0, smoothstep(-10.0, -1.5, wWhaleB[i].y));
+      gA *= 1.0 - 0.8 * inside * wa;
+      gA += wa * dimD * (rim * (0.5 + 0.6 * fil) + wk * (0.35 + 0.9 * fil) + exp(-pow(max(e - 1.0, 0.0) / 1.1, 2.0)) * 0.12 * (1.0 - inside));
+    }
     c += wGlow * gA * 0.85 * night * wGlowAmt * (1.0 - 0.5 * F);
     // shoreline sparks
     c += wGlow * smoothstep(1.6, 0.1, depth) * (0.2 + 0.8 * fil) * 0.22 * night * wGlowAmt * step(0.01, depth);

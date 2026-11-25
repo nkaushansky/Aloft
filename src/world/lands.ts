@@ -459,7 +459,7 @@ function darkwater(seed: number): Land {
     },
     landmarks: [
       { id: 'light', name: 'The Keeper’s Light', kind: 'lighthouse', t: 0.42, off: 190, reach: 240, pad: 60, padY: 34 },
-      { id: 'whale', name: 'The Old Swimmer', kind: 'whale', t: 0.66, off: -60, reach: 260 },
+      { id: 'whale', name: 'The Old Swimmer', kind: 'whale', t: 0.7, off: -70, reach: 230 },
       { id: 'cairnd', name: 'Halfway Rock', kind: 'cairn', t: 0.2, off: -170, reach: 170, pad: 30, padY: 22 },
     ],
   };

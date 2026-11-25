@@ -8,6 +8,7 @@ import { Crane, FeatherField } from '../render/crane';
 import { FarBirds, Multitude } from '../render/farBirds';
 import { Fx } from '../render/fx';
 import { Landmarks } from '../render/landmarks';
+import { Whales } from '../render/whales';
 import { applyLight, Frame, makeFrame } from '../render/light';
 import { G } from '../render/globals';
 import type { BakedLand } from '../world/generate';
@@ -36,6 +37,7 @@ export class World {
   readonly multitude: Multitude;
   readonly fx: Fx;
   readonly landmarks: Landmarks;
+  readonly whales: Whales;
   readonly frame: Frame = makeFrame();
 
   land!: Land;
@@ -73,9 +75,7 @@ export class World {
     e.water.add(this.water.mesh);
     this.fx = new Fx(e.fx, e.V, q.name === 'low' ? 0.5 : q.name === 'medium' ? 0.75 : 1);
     this.landmarks = new Landmarks(e.opaque, e.shadowScene, e.fx, e.V);
-    this.landmarks.onBlow = (x, y, z) => {
-      for (let i = 0; i < 3; i++) this.fx.spark(x, y, z, (Math.random() - 0.5) * 1.6, 6 + Math.random() * 4, (Math.random() - 0.5) * 1.6, 0);
-    };
+    this.whales = new Whales(e.opaque, this.water, this.fx);
     this.applyQuality(q);
   }
 
@@ -120,6 +120,7 @@ export class World {
     this.engine.clouds.setWeather(this.mv.weather(this.land.route, ts, this.land.seed));
     this.fx.setMotes(this.mv.motes.kind, this.mv.motes.color, this.mv.motes.amount);
     this.landmarks.load(baked.landmarks, this.mv, this.terrain, this.trees.atlas);
+    this.whales.load(baked.id === 'darkwater', this.land.route, this.terrain);
     this.multitude.mesh.visible = false;
     this.engine.invalidateShadows();
     this.engine.clouds.cut();

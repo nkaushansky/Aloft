@@ -166,6 +166,15 @@ export class Game {
         if (this.phase === 'fly' && !this.paused) this.onPause();
       } else this.audio.resume();
     });
+    this.world.whales.events = {
+      blow: (d) => {
+        if (d < 420) this.audio.splash(0.5 * (1 - d / 420));
+      },
+      breach: () => this.audio.whale(),
+      splash: (d, size) => {
+        if (d < 600) this.audio.splash(Math.min(1, size * (1.15 - d / 600)));
+      },
+    };
     this.applySettings();
     this.engine.resize(true);
   }
@@ -928,13 +937,14 @@ export class Game {
       const f = Math.max(0, Math.sin(this.flashT * 20)) * this.flashT;
       this.engine.clouds.flash(f * 0.9);
     } else this.engine.clouds.flash(0);
-    const wp = w.landmarks.whalePos();
-    if (wp && Math.hypot(wp.x - p.x, wp.z - p.z) < 900) {
+    const wh = w.whales.nearest(p.x, p.z);
+    if (wh && wh.d < 900) {
       this.whaleT -= dt;
       if (this.whaleT < 0) {
         this.whaleT = 16 + Math.random() * 10;
         this.audio.whale();
       }
+      if (wh.d < 520) this.hint('whale', 'Something is breathing down there.', 5200);
     }
   }
   private flashT = 0;
@@ -970,7 +980,7 @@ export class Game {
     for (const l of this.world.landmarks.list) {
       const key = `${this.world.land.id}:${l.def.id}`;
       if (this.discovered.has(key)) continue;
-      const wp = l.def.kind === 'whale' ? this.world.landmarks.whalePos() : null;
+      const wp = l.def.kind === 'whale' ? this.world.whales.nearest(p.x, p.z) : null;
       const x = wp ? wp.x : l.def.x;
       const z = wp ? wp.z : l.def.z;
       if (Math.hypot(x - p.x, z - p.z) < l.def.reach * 1.2 && p.y - l.def.y < l.top + 240) {
@@ -1328,6 +1338,9 @@ export class Game {
     }
     this.drawn.set(s.position.x, s.position.y, s.position.z);
     const pdt = this.paused || this.phase === 'photo' ? 0 : dt;
+
+    const bf = forwardOf({ yaw: s.yaw, pitch: 0 });
+    if (pdt > 0) w.whales.update(pdt, s.position, bf);
 
     // light
     const nightTarget = this.phase === 'night' && !this.free ? sm(0.4, 7, this.t) : 0;

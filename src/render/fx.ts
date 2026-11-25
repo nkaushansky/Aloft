@@ -227,7 +227,7 @@ export class Fx {
 
     // --- spray, sparks, shed down
     {
-      const n = 260;
+      const n = 520;
       const q = quad();
       const g = new THREE.InstancedBufferGeometry();
       g.setAttribute('position', q.pos);
@@ -487,9 +487,9 @@ void main(){
   float id = floor(T), f = fract(T);
   vec3 r = vec3(hash12(vec2(id, iR.x * 91.0)), hash12(vec2(id + 3.0, iR.y * 91.0)), hash12(vec2(id + 7.0, iR.z * 91.0)));
   vec3 base = (r * 2.0 - 1.0) * vec3(b, 34.0, b);
-  // keep to the world, not the camera: snap the box in big steps
-  vec3 cc = floor(uCamPos / 60.0) * 60.0;
-  vec3 p0 = cc + base + vec3(wd.x, 0.0, wd.y) * 20.0;
+  // each stroke keeps its place in the world and wraps unseen at the far edge
+  vec3 bx = vec3(b, 34.0, b);
+  vec3 p0 = mod(base - uCamPos + bx, 2.0 * bx) - bx + uCamPos + vec3(wd.x, 0.0, wd.y) * 20.0;
   float g = max(terrainH(p0.xz), 0.0);
   p0.y = max(p0.y, g + 3.0);
   float len = 34.0 + 22.0 * iR.y;
@@ -693,19 +693,22 @@ in vec4 iA; in vec4 iB;
 out vec2 vQ; out float vA; out float vK; out vec3 vW;
 void main(){
   float t = uTime - iA.w;
-  float life = iB.w < 0.5 ? 1.1 : iB.w < 1.5 ? 2.2 : 5.0;
+  float life = iB.w < 0.5 ? 1.1 : iB.w < 1.5 ? 2.2 : iB.w < 2.5 ? 5.0 : iB.w < 3.5 ? 3.4 : 2.2;
   float k = t / life;
   vK = iB.w;
-  float grav = iB.w < 0.5 ? 6.0 : iB.w < 1.5 ? -0.4 : 0.35;
-  float drag = iB.w < 0.5 ? 0.6 : 1.6;
+  float grav = iB.w < 0.5 ? 6.0 : iB.w < 1.5 ? -0.4 : iB.w < 2.5 ? 0.35 : iB.w < 3.5 ? 0.25 : 7.0;
+  float drag = iB.w < 0.5 ? 0.6 : iB.w < 2.5 ? 1.6 : iB.w < 3.5 ? 1.25 : 0.5;
   vec3 p = iA.xyz + iB.xyz * (1.0 - exp(-drag * t)) / drag - vec3(0.0, 0.5 * grav * t * t, 0.0);
-  if (iB.w > 1.5) p += vec3(sin(t * 2.0 + iA.x), 0.0, cos(t * 1.7 + iA.z)) * 0.3 + vec3(uWind.x, 0.0, uWind.y) * t * 0.25;
-  float s = iB.w < 0.5 ? 0.035 + 0.05 * k : iB.w < 1.5 ? 0.06 * (1.0 - k * 0.5) : 0.06;
+  if (iB.w > 1.5 && iB.w < 2.5) p += vec3(sin(t * 2.0 + iA.x), 0.0, cos(t * 1.7 + iA.z)) * 0.3 + vec3(uWind.x, 0.0, uWind.y) * t * 0.25;
+  if (iB.w > 2.5 && iB.w < 3.5) p += vec3(uWind.x, 0.0, uWind.y) * t * 0.22;
+  float s = iB.w < 0.5 ? 0.035 + 0.05 * k : iB.w < 1.5 ? 0.06 * (1.0 - k * 0.5) : iB.w < 2.5 ? 0.06 : iB.w < 3.5 ? 0.45 + 2.3 * sqrt(k) : 0.10 * (1.0 - 0.6 * k);
+  if (iB.w > 3.5) s *= 1.0 + length(p - uCamPos) / 90.0;
   vec3 right = vec3(viewMatrix[0][0], viewMatrix[1][0], viewMatrix[2][0]);
   vec3 up = vec3(viewMatrix[0][1], viewMatrix[1][1], viewMatrix[2][1]);
   vW = p + (right * position.x + up * position.y) * s;
   vQ = position.xy;
   vA = (t < 0.0 || k > 1.0) ? 0.0 : (1.0 - k) * smoothstep(0.0, 0.05, k);
+  if (iB.w > 3.5) vA *= smoothstep(-0.3, 0.1, p.y);
   gl_Position = vA <= 0.0 ? vec4(0.0, 0.0, 2.0, 1.0) : projectionMatrix * viewMatrix * vec4(vW, 1.0);
 }
 `;
@@ -718,7 +721,8 @@ void main(){
   float a = smoothstep(1.0, 0.2, length(vQ));
   vec3 d = normalize(vW - uCamPos);
   float back = pow(sat(dot(d, uKeyDir)), 4.0);
-  vec3 c = vK < 0.5 ? (uKeyCol * (0.5 + 1.5 * back) + uAmbSky) * 0.9 : vK < 1.5 ? vec3(1.6, 1.25, 0.8) * (0.5 + lum(uHorizon)) : (uKeyCol * 0.6 + uAmbSky) * 0.95;
-  o = vec4(c, a * vA * (vK < 0.5 ? 0.6 : 0.9) * softDepth(0.4));
+  vec3 c = vK < 0.5 ? (uKeyCol * (0.5 + 1.5 * back) + uAmbSky) * 0.9 : vK < 1.5 ? vec3(1.6, 1.25, 0.8) * (0.5 + lum(uHorizon)) : vK < 2.5 ? (uKeyCol * 0.6 + uAmbSky) * 0.95 : vK < 3.5 ? (uKeyCol * 0.75 + uAmbSky * 1.1 + uHorizon * 0.5 + vec3(0.02, 0.10, 0.09) * uStars) : vec3(0.35, 1.5, 1.3) * mix(0.35, 1.0, sat(uStars * 1.4)) + uKeyCol * 0.2;
+  if (vK > 2.5 && vK < 3.5) { float r2 = length(vQ); a = exp(-r2 * r2 * 3.2) * smoothstep(1.0, 0.5, r2); }
+  o = vec4(c, a * vA * (vK < 0.5 ? 0.6 : vK < 2.5 ? 0.9 : vK < 3.5 ? 0.17 : 1.0) * softDepth(vK > 2.5 && vK < 3.5 ? 2.0 : 0.4));
 }
 `;

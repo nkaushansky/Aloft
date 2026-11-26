@@ -209,6 +209,10 @@ void main(){
   if (wake < 0.02){ bp.x *= 0.13; if (bp.z < -0.6) bp.y += 1.0; if (bp.z > 0.6) { bp.y -= 0.9; bp.z = 0.1; } bp.z *= 0.75; }
   vec3 p = birdVert(bp, yaw, 0.3 * dir * wake, uTime * (6.5 + iR.x * 2.0) + iR.w * 40.0, 0.95 + 0.15 * iR.y, flap, 0.0, n);
   vec3 c = vec3(uCenter.x + pos.x, pos.y, uCenter.z + pos.z);
+  // they part around whoever is watching
+  vec2 away = c.xz - uCamPos.xz;
+  float dh = length(away) + 0.001;
+  c.xz = uCamPos.xz + away / dh * sqrt(dh * dh + 260.0 * min(1.0, wake * 5.0));
   float d = length(c - uCamPos);
   vW = c + p * max(1.0, d / 420.0); vN = n; vTone = aTone;
   gl_Position = projectionMatrix * viewMatrix * vec4(vW, 1.0);

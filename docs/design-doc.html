@@ -32,12 +32,18 @@ code { font:14px ui-monospace,Menlo,monospace; background:#efe6d5; padding:1px 5
 
 <h1>Aloft</h1>
 <p class="lede">You are a young crane. The flock left while you were sleeping. It is a long way south, and you are one day behind.</p>
-<p class="meta">Living design doc · v1.2 · Nov 25 2026 · supersedes v0.10 (kept in <code>docs/archive/</code>) · updated in place when decisions land</p>
+<p class="meta">Living design doc · v1.3 · Nov 26 2026 · supersedes v0.10 (kept in <code>docs/archive/</code>) · updated in place when decisions land</p>
 
 <div class="sky"></div>
 <p>The color script, start to finish. Position in it follows distance flown, not a clock.</p>
 
 <h2>Playtest log</h2>
+<h3>Nov 25–26 2026, Nate, the end (MacBook Pro)</h3>
+<ul>
+<li>"Answer light and feathers feel better definitely." <b>Both closed.</b></li>
+<li><b>Finished the game.</b> "The ending was lovely. Good game." <b>The ending: leave alone</b>, bar one thing seen while filming it: cranes in the multitude could fly right through the camera, where they're drawn too simply to stand it. They now part around whoever is watching.</li>
+<li><b><code>?day=5</code> opened land VI.</b> It could only move you forward, and he'd already been past it. The link now starts at exactly the land it names and leaves the road you've opened alone. The whales and the new water in land V are still unseen by him because of it.</li>
+</ul>
 <h3>Nov 24–25 2026, Nate, the night crossing (MacBook Pro)</h3>
 <ul>
 <li>Glowing water "gorgeous"; flight "still really smooth". <b>The glow and the sky: leave alone.</b></li>
@@ -159,12 +165,12 @@ code { font:14px ui-monospace,Menlo,monospace; background:#efe6d5; padding:1px 5
 </ul>
 
 <h2>Staging and publishing</h2>
-<p><b>nk00.com/arcade/aloft is the staging area</b> (decided Nov 24). <code>npm run build:arcade</code> makes the folder, hub card included; the deploy archives what it replaces. <code>?day=4</code> opens the road that far, for picking up a run on a new machine.</p>
-<p>When it's ready to publish for real: a trailer (1280×720, 15 to 30 s, with sound), a muted hover loop, four or five captioned screenshots, a cover page, and the arcade card moved from work in progress to playable. Not before.</p>
+<p><b>nk00.com/arcade/aloft is the staging area</b> (decided Nov 24). <code>npm run build:arcade</code> makes the folder, hub card included; the deploy archives what it replaces. <code>?day=4</code> starts at land IV, for picking up a run on a new machine.</p>
+<p><b>Published to the arcade as playable</b> (Nov 26, on Nate's "go ahead and make a trailer and arcade cards"). The card has a 32 s trailer with sound, a muted hover loop, six captioned screenshots and a cover. All of it is in-engine: the shots are the game stepped one frame at a time at high quality with its interface hidden, and the soundtrack is the game's own score and voices, rendered so the homecoming theme resolves as the name appears. Three liberties: the crane on the bank watches a flock placed for the lens, the whale was cued, and the formations are the size they'd be if you'd gathered everyone by then. Source files live in <code>arcade/media/</code>.</p>
 
 <h2>What I'd look at next</h2>
 <ol>
-<li><b>Lands IV to VI by hand.</b> Nobody has flown the Red Rooms, the crossing or the ending yet.</li>
+<li><b>The night crossing again by hand</b> (<code>?day=5</code>): the whales, and whether the water is smooth now.</li>
 <li><b>Sound by ear</b>, and frame rate on more than one machine. Phones and Safari are untried.</li>
 <li>A Jess pass on palettes, if she'd enjoy it. Everything is hex values in <code>days.ts</code>.</li>
 <li>Parked: choosing your bird, real-elevation lands, a second journey north in spring.</li>

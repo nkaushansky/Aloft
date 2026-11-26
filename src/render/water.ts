@@ -414,12 +414,14 @@ void main(){
       float e = length(vec2(la / (wWhaleB[i].x * 0.16), al / hl));
       float rim = exp(-pow((e - 1.1) / 0.24, 2.0));
       float inside = smoothstep(1.02, 0.78, e);
-      float bh = -al - hl * 0.55;
+      float bh = -al - hl * 0.4;
       float wk = 0.0;
       if (bh > 0.0){
         float arm = abs(la) - (wWhaleB[i].x * 0.07 + bh * 0.17);
         wk = exp(-arm * arm / (1.6 + bh * 0.12)) * exp(-bh / 46.0) * 0.8;
         wk += exp(-la * la / (wWhaleB[i].x * 0.22 + bh * 0.25)) * exp(-bh / 30.0) * 0.75;
+        // it gathers along the flank; it doesn't start at a line
+        wk *= smoothstep(0.0, hl * 0.95, bh);
       }
       float dimD = mix(0.5, 1.0, smoothstep(-10.0, -1.5, wWhaleB[i].y));
       gA *= 1.0 - 0.8 * inside * wa;

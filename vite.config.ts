@@ -10,7 +10,7 @@ const arcade = (): Plugin => ({
   transformIndexHtml: () => [
     { tag: 'meta', attrs: { property: 'og:title', content: 'Aloft' }, injectTo: 'head' },
     { tag: 'meta', attrs: { property: 'og:description', content: 'A long way south, one day behind. A quiet flight.' }, injectTo: 'head' },
-    { tag: 'meta', attrs: { property: 'og:image', content: `${ARCADE}thumb.jpg` }, injectTo: 'head' },
+    { tag: 'meta', attrs: { property: 'og:image', content: `${ARCADE}media/cover.jpg` }, injectTo: 'head' },
     { tag: 'script', attrs: { defer: true, src: 'https://www.nk00.com/nk.js', 'data-site': 'arcade' }, injectTo: 'head' },
   ],
   closeBundle: () => cpSync('arcade', 'dist-arcade', { recursive: true }),

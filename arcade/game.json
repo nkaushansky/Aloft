@@ -1,13 +1,47 @@
 {
   "title": "Aloft",
   "tagline": "A young crane, one day behind the flock, following its voice south.",
-  "status": "wip",
+  "status": "playable",
   "kind": "game",
   "thumb": "thumb.jpg",
-  "controls": ["keyboard", "mouse", "touch", "gamepad"],
+  "preview": "media/preview.mp4",
+  "trailer": "media/trailer.mp4",
+  "poster": "media/cover.jpg",
+  "screens": [
+    {
+      "src": "media/shot-waking.jpg",
+      "caption": "Stillmere. They left while you were sleeping."
+    },
+    {
+      "src": "media/shot-copper.jpg",
+      "caption": "The Copper Wood. The wind leans on the ridges all day."
+    },
+    {
+      "src": "media/shot-stair.jpg",
+      "caption": "The White Stair, above the weather."
+    },
+    {
+      "src": "media/shot-rooms.jpg",
+      "caption": "The Red Rooms, through the Open Eye."
+    },
+    {
+      "src": "media/shot-crossing.jpg",
+      "caption": "The Long Dark Water. You are not the only light out here."
+    },
+    {
+      "src": "media/shot-wintering.jpg",
+      "caption": "Wintering. Listen."
+    }
+  ],
+  "controls": [
+    "keyboard",
+    "mouse",
+    "touch",
+    "gamepad"
+  ],
   "mobile": false,
   "external_url": null,
   "featured": false,
-  "version": "1.2.0",
-  "updated": "2026-11-25"
+  "version": "1.3.0",
+  "updated": "2026-11-26"
 }

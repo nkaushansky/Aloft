@@ -181,10 +181,12 @@ export class Game {
 
   private muted = false;
 
-  /** Staging convenience: `?day=4` opens the road that far, once. */
+  /** `?day=5` starts at exactly that land, wherever the road had got to. */
+  private startAt = -1;
   private skipAhead(): void {
     const n = parseInt(new URLSearchParams(location.search).get('day') ?? '', 10);
     if (!(n >= 1 && n <= 6)) return;
+    this.startAt = n - 1;
     this.data.day = Math.max(this.data.day, n - 1);
     this.data.companions = Math.max(this.data.companions, [0, 2, 4, 6, 7, 8][n - 1]);
     save(this.data);
@@ -222,7 +224,7 @@ export class Game {
   async boot(): Promise<void> {
     this.ui.loading(0.02, '');
     this.engine.clouds.buildVolume(this.engine.quality.name === 'low' ? 48 : 96);
-    const id = landAt(this.data.day);
+    const id = landAt(this.next());
     await this.enter(id, undefined, true);
     this.toTitle(true);
     // draw behind the curtain so every shader is warm before it lifts
@@ -374,10 +376,11 @@ export class Game {
     this.audio.setScene('title');
     const d = this.data;
     const items: MenuItem[] = [];
-    if (d.day === 0 && !Object.keys(d.days).length) items.push({ label: 'Begin', run: () => this.startDay(0) });
-    else if (d.day <= 5) {
-      const mv = MOVEMENTS[landAt(d.day)];
-      items.push({ label: 'Go on', note: `${mv.numeral}. ${mv.title}`, run: () => this.startDay(d.day) });
+    const nx = this.next();
+    if (nx === 0 && !Object.keys(d.days).length) items.push({ label: 'Begin', run: () => this.startDay(0) });
+    else if (nx <= 5) {
+      const mv = MOVEMENTS[landAt(nx)];
+      items.push({ label: 'Go on', note: `${mv.numeral}. ${mv.title}`, run: () => this.startDay(nx) });
     } else items.push({ label: 'Fly again', note: 'from the beginning', run: () => this.restart() });
     items.push({ label: 'The road', run: () => this.openRoad() });
     items.push({ label: 'How to fly', run: () => this.openHow(() => this.ui.closePanel()) });
@@ -391,7 +394,13 @@ export class Game {
     else void document.documentElement.requestFullscreen().catch(() => {});
   }
 
+  /** which land comes next: the link's, until it's been flown, else the road's */
+  private next(): number {
+    return this.startAt >= 0 ? this.startAt : this.data.day;
+  }
+
   private restart(): void {
+    this.startAt = -1;
     this.data.day = 0;
     this.data.companions = 0;
     save(this.data);
@@ -722,7 +731,7 @@ export class Game {
     this.ui.hush();
     await this.wait(1.4);
     this.free = false;
-    await this.enter(landAt(this.data.day), undefined, false);
+    await this.enter(landAt(this.next()), undefined, false);
     this.toTitle();
   }
 
@@ -1164,6 +1173,7 @@ export class Game {
       feathersTotal: this.rec.feathersTotal,
       seconds: this.rec.seconds,
     };
+    if (this.landIdx === this.startAt) this.startAt = -1;
     if (!this.free && this.landIdx >= this.data.day) this.data.day = Math.min(6, this.landIdx + 1);
     track('game_milestone', { name: 'roost', value: this.landIdx + 1, land: id, secs: Math.round(this.rec.seconds), feathers: this.rec.feathers });
     save(this.data);
